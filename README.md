@@ -7,3 +7,7 @@ First, run the development server:
 ```bash
 pnpm run dev
 ```
+
+## Tech Stack
+
+### NEXTJS
