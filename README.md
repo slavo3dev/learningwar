@@ -11,3 +11,5 @@ pnpm run dev
 ## Tech Stack
 
 ### NEXTJS
+
+### Supabase
