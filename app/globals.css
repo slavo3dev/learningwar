@@ -1,77 +1,77 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 :root {
-	/* LearningWar — blue/white, clean and trustworthy */
-	--background: 0 0% 100%;
-	--foreground: 215 25% 12%;
+  /* LearningWar — blue/white, clean and trustworthy */
+  --background: 0 0% 100%;
+  --foreground: 215 25% 12%;
 
-	--card: 0 0% 100%;
-	--card-foreground: 215 25% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 25% 12%;
 
-	--popover: 0 0% 100%;
-	--popover-foreground: 215 25% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 25% 12%;
 
-	/* Primary — slavo.io blue */
-	--primary: 214 89% 42%;
-	--primary-foreground: 0 0% 100%;
+  /* Primary — slavo.io blue */
+  --primary: 214 89% 42%;
+  --primary-foreground: 0 0% 100%;
 
-	/* Secondary — light blue tint */
-	--secondary: 214 80% 96%;
-	--secondary-foreground: 214 89% 32%;
+  /* Secondary — light blue tint */
+  --secondary: 214 80% 96%;
+  --secondary-foreground: 214 89% 32%;
 
-	--muted: 214 20% 96%;
-	--muted-foreground: 215 16% 47%;
+  --muted: 214 20% 96%;
+  --muted-foreground: 215 16% 47%;
 
-	--accent: 214 80% 94%;
-	--accent-foreground: 214 89% 32%;
+  --accent: 214 80% 94%;
+  --accent-foreground: 214 89% 32%;
 
-	--destructive: 0 84% 60%;
-	--destructive-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
 
-	--border: 214 20% 90%;
-	--input: 214 20% 90%;
-	--ring: 214 89% 42%;
+  --border: 214 20% 90%;
+  --input: 214 20% 90%;
+  --ring: 214 89% 42%;
 
-	--radius: 0.5rem;
+  --radius: 0.5rem;
 }
 
 .dark {
-	--background: 215 35% 8%;
-	--foreground: 214 20% 96%;
+  --background: 215 35% 8%;
+  --foreground: 214 20% 96%;
 
-	--card: 215 30% 11%;
-	--card-foreground: 214 20% 96%;
+  --card: 215 30% 11%;
+  --card-foreground: 214 20% 96%;
 
-	--popover: 215 30% 11%;
-	--popover-foreground: 214 20% 96%;
+  --popover: 215 30% 11%;
+  --popover-foreground: 214 20% 96%;
 
-	--primary: 214 89% 52%;
-	--primary-foreground: 0 0% 100%;
+  --primary: 214 89% 52%;
+  --primary-foreground: 0 0% 100%;
 
-	--secondary: 215 25% 16%;
-	--secondary-foreground: 214 80% 80%;
+  --secondary: 215 25% 16%;
+  --secondary-foreground: 214 80% 80%;
 
-	--muted: 215 25% 16%;
-	--muted-foreground: 215 16% 56%;
+  --muted: 215 25% 16%;
+  --muted-foreground: 215 16% 56%;
 
-	--accent: 215 25% 18%;
-	--accent-foreground: 214 80% 80%;
+  --accent: 215 25% 18%;
+  --accent-foreground: 214 80% 80%;
 
-	--destructive: 0 72% 51%;
-	--destructive-foreground: 0 0% 100%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
 
-	--border: 215 25% 18%;
-	--input: 215 25% 18%;
-	--ring: 214 89% 52%;
+  --border: 215 25% 18%;
+  --input: 215 25% 18%;
+  --ring: 214 89% 52%;
 }
 
 * {
-	border-color: hsl(var(--border));
+  border-color: hsl(var(--border));
 }
 
 body {
-	background: hsl(var(--background));
-	color: hsl(var(--foreground));
-	font-family: var(--font-sans);
-	-webkit-font-smoothing: antialiased;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
