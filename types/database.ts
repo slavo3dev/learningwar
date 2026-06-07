@@ -1,0 +1,157 @@
+export type UserRole = "student" | "junior_mentor" | "mentor" | "admin";
+export type MentorType = "one_on_one" | "group" | "sprint";
+export type ActivityType = "session" | "porch_post" | "yt_note" | "mentor_msg_read";
+export type ReportPeriod = "weekly" | "monthly" | "custom";
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          username: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          bio: string | null;
+          role: UserRole;
+          mentor_id: string | null;
+          cohort_id: string | null;
+          promoted_at: string | null;
+          calendar_public: boolean;
+          timezone: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          username: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          bio?: string | null;
+          role?: UserRole;
+          mentor_id?: string | null;
+          cohort_id?: string | null;
+          promoted_at?: string | null;
+          calendar_public?: boolean;
+          timezone?: string;
+        };
+        Update: {
+          username?: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          bio?: string | null;
+          calendar_public?: boolean;
+          timezone?: string;
+          updated_at?: string;
+        };
+      };
+      sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          topic: string;
+          score: number | null;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: { id?: string; user_id: string; topic: string; score?: number | null; };
+        Update: { topic?: string; score?: number | null; completed_at?: string | null; };
+      };
+      porch_posts: {
+        Row: {
+          id: string;
+          user_id: string;
+          what_learned: string;
+          challenges: string | null;
+          tomorrow: string | null;
+          mood: number | null;
+          is_public: boolean;
+          post_date: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          what_learned: string;
+          challenges?: string | null;
+          tomorrow?: string | null;
+          mood?: number | null;
+          is_public?: boolean;
+          post_date: string;
+        };
+        Update: {
+          what_learned?: string;
+          challenges?: string | null;
+          tomorrow?: string | null;
+          mood?: number | null;
+          is_public?: boolean;
+        };
+      };
+      learning_activity: {
+        Row: {
+          id: string;
+          user_id: string;
+          activity_date: string;
+          activity_type: ActivityType;
+          points: number;
+          ref_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          activity_date: string;
+          activity_type: ActivityType;
+          points?: number;
+          ref_id?: string | null;
+        };
+        Update: never;
+      };
+      streaks: {
+        Row: {
+          user_id: string;
+          current_streak: number;
+          longest_streak: number;
+          last_active_date: string | null;
+          updated_at: string;
+        };
+        Insert: { user_id: string; };
+        Update: {
+          current_streak?: number;
+          longest_streak?: number;
+          last_active_date?: string | null;
+          updated_at?: string;
+        };
+      };
+    };
+    Views: {
+      daily_points: {
+        Row: {
+          user_id: string;
+          activity_date: string;
+          total_points: number;
+          heat_level: number;
+        };
+      };
+    };
+    Functions: {
+      assign_mentor: { Args: { student_id: string; mentor_id: string }; Returns: void; };
+      promote_to_junior_mentor: { Args: { student_id: string }; Returns: void; };
+    };
+    Enums: {
+      user_role: UserRole;
+      mentor_type: MentorType;
+      activity_type: ActivityType;
+      report_period: ReportPeriod;
+    };
+  };
+}
+
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
+export type Session = Database["public"]["Tables"]["sessions"]["Row"];
+export type PorchPost = Database["public"]["Tables"]["porch_posts"]["Row"];
+export type LearningActivity = Database["public"]["Tables"]["learning_activity"]["Row"];
+export type Streak = Database["public"]["Tables"]["streaks"]["Row"];
+export type DailyPoints = Database["public"]["Views"]["daily_points"]["Row"];
