@@ -26,10 +26,18 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { pathname } = request.nextUrl;
 
-  const publicRoutes = ["/", "/auth/sign-in", "/auth/sign-up", "/auth/forgot-password", "/auth/callback"];
+  const publicRoutes = [
+    "/auth/sign-in",
+    "/auth/sign-up",
+    "/auth/forgot-password",
+    "/auth/callback",
+  ];
   const isPublic = publicRoutes.some((r) => pathname.startsWith(r));
 
   if (!user && !isPublic) {
@@ -39,7 +47,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname.startsWith("/auth/sign-in") || pathname.startsWith("/auth/sign-up"))) {
+  if (
+    user &&
+    (pathname.startsWith("/auth/sign-in") ||
+      pathname.startsWith("/auth/sign-up"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

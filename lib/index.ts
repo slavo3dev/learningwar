@@ -1,3 +1,3 @@
-export { createClient as createServerClient } from "./supabase/server";
-export { createClient as createBrowserClient } from "./supabase/server";
-export * from "./supabase/middleware";
+export { createClient as createBrowserSupabaseClient } from "./supabase/client";
+export { createServerSupabaseClient } from "./supabase/server";
+export { updateSession } from "./supabase/middleware";
