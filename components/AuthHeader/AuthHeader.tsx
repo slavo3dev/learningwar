@@ -4,7 +4,7 @@ interface AuthHeaderProps {
   title: string;
   subtitle: string;
 }
-
+// test
 export function AuthHeader({ title, subtitle }: AuthHeaderProps) {
   return (
     <div className="mb-8 text-center">
