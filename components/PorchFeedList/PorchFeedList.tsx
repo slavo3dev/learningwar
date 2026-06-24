@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { PostCard } from '@/components/PostCard/PostCard';
 import { getFilteredPosts } from '@/app/dashboard/porch-actions';
 import type { PorchFeedPost } from '@/types/database';
@@ -19,6 +19,27 @@ export function PorchFeedList({
 	const [filter, setFilter] = useState<'all' | 'mine'>('all');
 	const [search, setSearch] = useState('');
 	const [isPending, startTransition] = useTransition();
+
+	// When the server component re-renders after a mutation (revalidatePath),
+	// React preserves client useState values — the fresh initialPosts prop is
+	// ignored by useState. This effect detects the prop change and re-fetches
+	// respecting the current filter/search so the new post appears immediately.
+	const isFirstRender = useRef(true);
+	useEffect(() => {
+		if (isFirstRender.current) {
+			isFirstRender.current = false;
+			return;
+		}
+		startTransition(async () => {
+			const result = await getFilteredPosts({ offset: 0, filter, search });
+			setPosts(result.posts);
+			setHasMore(result.hasMore);
+		});
+		// initialPosts reference changes on every RSC re-render (post created/updated).
+		// filter and search are intentionally omitted — the [filter, search] effect below
+		// already handles those changes and would otherwise race with this one.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [initialPosts]);
 
 	useEffect(() => {
 		const timeout = setTimeout(() => {
