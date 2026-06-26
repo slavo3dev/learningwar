@@ -4,13 +4,21 @@ import { createServerSupabaseClient } from "@/lib";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const error = searchParams.get("error");
+  const errorCode = searchParams.get("error_code");
   const next = searchParams.get("next") ?? "/dashboard";
+
+  // Supabase sent back an error (expired/invalid link, denied, etc.)
+  if (error) {
+    const reason = errorCode === "otp_expired" ? "link_expired" : "auth_callback_failed";
+    return NextResponse.redirect(`${origin}/auth/sign-in?error=${reason}`);
+  }
 
   if (code) {
     const supabase = await createServerSupabaseClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
+    if (!exchangeError) {
       const forwardedHost = request.headers.get("x-forwarded-host");
       const isLocal = process.env.NODE_ENV === "development";
 

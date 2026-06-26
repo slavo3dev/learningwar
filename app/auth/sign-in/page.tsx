@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { AuthCard, AuthHeader, SignInForm } from "@/components";
 
-export default function SignInPage({
+export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { redirectedFrom?: string; error?: string };
+  searchParams: Promise<{ redirectedFrom?: string; error?: string }>;
 }) {
+  const { redirectedFrom, error } = await searchParams;
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -14,14 +16,20 @@ export default function SignInPage({
           subtitle="Sign in to continue learning"
         />
 
-        {searchParams.error === "auth_callback_failed" && (
+        {error === "link_expired" && (
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            That confirmation link expired. Please sign up again to get a new one.
+          </div>
+        )}
+
+        {error === "auth_callback_failed" && (
           <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             Something went wrong. Please try again.
           </div>
         )}
 
         <AuthCard>
-          <SignInForm redirectedFrom={searchParams.redirectedFrom} />
+          <SignInForm redirectedFrom={redirectedFrom} />
         </AuthCard>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
