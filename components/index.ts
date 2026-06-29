@@ -4,3 +4,6 @@ export * from './SignInForm';
 export * from './SignUpForm';
 export * from './ForgotPasswordForm';
 export * from './Sidebar';
+export * from './ReactionIcons';
+export * from './PostCard';
+export * from './PorchFeed';
