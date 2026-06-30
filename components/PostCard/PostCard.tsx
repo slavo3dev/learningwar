@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from 'react';
 import { createComment, toggleLike } from '@/app/dashboard/porch-actions';
-import { SpartanIcon, LionIcon, WolfIcon } from '@/components';
+import {
+	SpartanIcon,
+	LionIcon,
+	WolfIcon,
+} from '@/components/ReactionIcons/ReactionIcons';
 import type { PorchFeedPost, ReactionType } from '@/types/database';
 
 const reactionMeta: Record<

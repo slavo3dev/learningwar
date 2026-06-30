@@ -7,3 +7,4 @@ export * from './Sidebar';
 export * from './ReactionIcons';
 export * from './PostCard';
 export * from './PorchFeed';
+export * from './ReactionIcons';
