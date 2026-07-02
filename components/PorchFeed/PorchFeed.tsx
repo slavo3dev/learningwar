@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from '@/lib';
-import { PostCard } from '@/components';
+import { PostCard, PorchForm } from '@/components';
 import type { PorchFeedPost } from '@/types/database';
 
 export async function PorchFeed() {
@@ -24,7 +24,9 @@ export async function PorchFeed() {
 	const feedPosts = (posts ?? []) as unknown as PorchFeedPost[];
 
 	return (
-		<div className='mx-auto max-w-2xl space-y-4'>
+		<div className='space-y-4'>
+			<PorchForm />
+
 			{feedPosts.map((post) => (
 				<PostCard
 					key={post.id}
@@ -34,8 +36,9 @@ export async function PorchFeed() {
 			))}
 
 			{feedPosts.length === 0 && (
-				<p className='text-center text-sm text-gray-500'>
-					No public porch updates yet.
+				<p className='py-6 text-center text-sm text-gray-500'>
+					No public porch updates yet — be the first to share
+					something.
 				</p>
 			)}
 		</div>

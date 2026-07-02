@@ -8,3 +8,6 @@ export * from './ReactionIcons';
 export * from './PostCard';
 export * from './PorchFeed';
 export * from './ReactionIcons';
+export * from './LearningCalendar';
+export * from './HeatmapGrid';
+export * from './PorchForm';
