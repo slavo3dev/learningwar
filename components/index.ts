@@ -11,3 +11,5 @@ export * from './ReactionIcons';
 export * from './LearningCalendar';
 export * from './HeatmapGrid';
 export * from './PorchForm';
+export * from './PorchFeedList';
+export * from './ProfileForm';

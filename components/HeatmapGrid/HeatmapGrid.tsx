@@ -7,22 +7,8 @@ type ActivityDay = { date: string; count: number };
 const CELL_SIZE = 11;
 const CELL_GAP = 3;
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function levelForCount(count: number) {
-	if (count === 0) return 0;
-	if (count === 1) return 1;
-	if (count === 2) return 2;
-	if (count === 3) return 3;
-	return 4;
-}
-
-const levelColors = [
-	'#ebedf0', // 0
-	'#c6dcf1', // 1
-	'#8fbde3', // 2
-	'#4a8fd0', // 3
-	'#1a6fca', // 4 (brand blue)
-];
+const EMPTY_COLOR = '#ebedf0';
+const FILLED_COLOR = '#1a6fca';
 
 export function HeatmapGrid({ data }: { data: ActivityDay[] }) {
 	const [hovered, setHovered] = useState<{
@@ -131,9 +117,9 @@ export function HeatmapGrid({ data }: { data: ActivityDay[] }) {
 											width: CELL_SIZE,
 											height: CELL_SIZE,
 											backgroundColor:
-												levelColors[
-													levelForCount(day.count)
-												],
+												day.count > 0
+													? FILLED_COLOR
+													: EMPTY_COLOR,
 										}}
 									/>
 								))}

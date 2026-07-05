@@ -24,6 +24,8 @@ export interface Database {
 					promoted_at: string | null;
 					calendar_public: boolean;
 					timezone: string;
+					email: string | null;
+					show_email: boolean;
 					created_at: string;
 					updated_at: string;
 				};
@@ -39,6 +41,8 @@ export interface Database {
 					promoted_at?: string | null;
 					calendar_public?: boolean;
 					timezone?: string;
+					email?: string | null;
+					show_email?: boolean;
 				};
 				Update: {
 					username?: string;
@@ -47,6 +51,7 @@ export interface Database {
 					bio?: string | null;
 					calendar_public?: boolean;
 					timezone?: string;
+					show_email?: boolean;
 					updated_at?: string;
 				};
 				Relationships: [
@@ -288,7 +293,19 @@ export type DailyPoints = Database['public']['Views']['daily_points']['Row'];
 
 // Feed display type — a journal PorchPost enriched with author/comments/likes
 export type PorchFeedPost = PorchPost & {
-	author?: Pick<Profile, 'full_name' | 'avatar_url' | 'role'>;
-	comments?: (PorchComment & { author?: Pick<Profile, 'full_name'> })[];
+	author?: Pick<
+		Profile,
+		| 'username'
+		| 'full_name'
+		| 'avatar_url'
+		| 'role'
+		| 'email'
+		| 'show_email'
+	> & {
+		streaks?: Pick<Streak, 'current_streak'> | null;
+	};
+	comments?: (PorchComment & {
+		author?: Pick<Profile, 'username' | 'full_name'>;
+	})[];
 	likes?: PorchLike[];
 };
