@@ -10,7 +10,7 @@ const MOODS = [
 	{ value: 4, emoji: '🔥', label: 'Great' },
 ];
 
-export function PorchForm() {
+export function PorchForm({ onSuccess }: { onSuccess?: () => void }) {
 	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState<string | null>(null);
 	const formRef = useRef<HTMLFormElement>(null);
@@ -24,6 +24,7 @@ export function PorchForm() {
 				return;
 			}
 			formRef.current?.reset();
+			onSuccess?.();
 		});
 	}
 

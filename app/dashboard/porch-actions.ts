@@ -146,3 +146,50 @@ export async function getMorePosts(offset: number) {
 		hasMore: (data?.length ?? 0) === PAGE_SIZE,
 	};
 }
+
+export async function getFilteredPosts({
+	offset,
+	filter,
+	search,
+}: {
+	offset: number;
+	filter: 'all' | 'mine';
+	search: string;
+}) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { posts: [] as PorchFeedPost[], hasMore: false };
+
+	let query = supabase
+		.from('porch_posts')
+		.select(PORCH_FEED_SELECT)
+		.order('created_at', { ascending: false })
+		.range(offset, offset + PAGE_SIZE - 1);
+
+	query =
+		filter === 'mine'
+			? query.eq('user_id', user.id)
+			: query.eq('is_public', true);
+
+	if (search.trim()) {
+		const { data: matchedProfiles } = await supabase
+			.from('profiles')
+			.select('id')
+			.or(`username.ilike.%${search}%,full_name.ilike.%${search}%`);
+
+		const ids = (matchedProfiles ?? []).map((p) => p.id);
+		if (ids.length === 0)
+			return { posts: [] as PorchFeedPost[], hasMore: false };
+		query = query.in('user_id', ids);
+	}
+
+	const { data, error } = await query;
+	if (error) return { posts: [] as PorchFeedPost[], hasMore: false };
+
+	return {
+		posts: (data ?? []) as unknown as PorchFeedPost[],
+		hasMore: (data?.length ?? 0) === PAGE_SIZE,
+	};
+}

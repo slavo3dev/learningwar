@@ -1,148 +1,115 @@
-'use server';
+'use client';
 
-import { revalidatePath } from 'next/cache';
-import { createServerSupabaseClient } from '@/lib';
-import type { Database, PorchFeedPost, ReactionType } from '@/types/database';
+import { useEffect, useState, useTransition } from 'react';
+import { PostCard } from '@/components/PostCard/PostCard';
+import { getFilteredPosts } from '@/app/dashboard/porch-actions';
+import type { PorchFeedPost } from '@/types/database';
 
-type PorchPostInsert = Database['public']['Tables']['porch_posts']['Insert'];
-type PorchCommentInsert =
-	Database['public']['Tables']['porch_comments']['Insert'];
-type PorchLikeInsert = Database['public']['Tables']['porch_likes']['Insert'];
-type PorchLikeUpdate = Database['public']['Tables']['porch_likes']['Update'];
+export function PorchFeedList({
+	initialPosts,
+	currentUserId,
+	hasMore: initialHasMore,
+}: {
+	initialPosts: PorchFeedPost[];
+	currentUserId: string;
+	hasMore: boolean;
+}) {
+	const [posts, setPosts] = useState(initialPosts);
+	const [hasMore, setHasMore] = useState(initialHasMore);
+	const [filter, setFilter] = useState<'all' | 'mine'>('all');
+	const [search, setSearch] = useState('');
+	const [isPending, startTransition] = useTransition();
 
-const PAGE_SIZE = 20;
+	// Re-fetch from scratch whenever filter or search changes
+	useEffect(() => {
+		const timeout = setTimeout(() => {
+			startTransition(async () => {
+				const result = await getFilteredPosts({
+					offset: 0,
+					filter,
+					search,
+				});
+				setPosts(result.posts);
+				setHasMore(result.hasMore);
+			});
+		}, 300); // small debounce so typing doesn't fire a query per keystroke
 
-const PORCH_FEED_SELECT = `
-  id, user_id, what_learned, challenges, tomorrow, mood, is_public, post_date, created_at, updated_at,
-  author:profiles ( username, full_name, avatar_url, role, streaks ( current_streak ) ),
-  comments:porch_comments ( id, post_id, author_id, content, created_at, author:profiles ( username, full_name ) ),
-  likes:porch_likes ( id, post_id, user_id, reaction_type )
-`;
+		return () => clearTimeout(timeout);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [filter, search]);
 
-export async function createPost(formData: FormData) {
-	const what_learned = (formData.get('what_learned') as string)?.trim();
-	if (!what_learned) return { error: 'What you learned cannot be empty' };
-
-	const challenges = (formData.get('challenges') as string)?.trim() || null;
-	const tomorrow = (formData.get('tomorrow') as string)?.trim() || null;
-	const moodRaw = formData.get('mood') as string;
-	const mood = moodRaw ? Number(moodRaw) : null;
-	const is_public = formData.get('is_public') === 'on';
-
-	const supabase = await createServerSupabaseClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
-	if (!user) return { error: 'Not authenticated' };
-
-	const payload: PorchPostInsert = {
-		user_id: user.id,
-		what_learned,
-		challenges,
-		tomorrow,
-		mood,
-		is_public,
-		post_date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
-	};
-
-	const { error } = await supabase.from('porch_posts').insert(payload);
-
-	if (error) return { error: error.message };
-
-	revalidatePath('/dashboard');
-	return { success: true };
-}
-
-export async function createComment(postId: string, formData: FormData) {
-	const content = (formData.get('content') as string)?.trim();
-	if (!content) return { error: 'Comment cannot be empty' };
-
-	const supabase = await createServerSupabaseClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
-	if (!user) return { error: 'Not authenticated' };
-
-	const { data: post } = await supabase
-		.from('porch_posts')
-		.select('user_id')
-		.eq('id', postId)
-		.single();
-
-	if (post?.user_id === user.id) {
-		return { error: 'You cannot comment on your own post' };
+	function loadMore() {
+		startTransition(async () => {
+			const result = await getFilteredPosts({
+				offset: posts.length,
+				filter,
+				search,
+			});
+			setPosts((prev) => [...prev, ...result.posts]);
+			setHasMore(result.hasMore);
+		});
 	}
 
-	const payload: PorchCommentInsert = {
-		post_id: postId,
-		author_id: user.id,
-		content,
-	};
+	return (
+		<div className='space-y-4'>
+			<div className='flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between'>
+				<div className='flex gap-1'>
+					<button
+						onClick={() => setFilter('all')}
+						className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+							filter === 'all'
+								? 'bg-[#1a6fca]/10 text-[#1a6fca]'
+								: 'text-gray-500 hover:bg-gray-50'
+						}`}>
+						All updates
+					</button>
+					<button
+						onClick={() => setFilter('mine')}
+						className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+							filter === 'mine'
+								? 'bg-[#1a6fca]/10 text-[#1a6fca]'
+								: 'text-gray-500 hover:bg-gray-50'
+						}`}>
+						My updates
+					</button>
+				</div>
 
-	const { error } = await supabase.from('porch_comments').insert(payload);
+				<input
+					value={search}
+					onChange={(e) => setSearch(e.target.value)}
+					placeholder='Search by name or username...'
+					className='w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-none focus:border-[#1a6fca] focus:ring-2 focus:ring-[#1a6fca]/10 sm:w-64'
+				/>
+			</div>
 
-	if (error) return { error: error.message };
+			{posts.map((post) => (
+				<PostCard
+					key={post.id}
+					post={post}
+					currentUserId={currentUserId}
+				/>
+			))}
 
-	revalidatePath('/dashboard');
-	return { success: true };
-}
+			{!isPending && posts.length === 0 && (
+				<p className='py-6 text-center text-sm text-gray-500'>
+					{search
+						? `No updates found for "${search}"`
+						: filter === 'mine'
+							? "You haven't posted yet."
+							: 'No public porch updates yet — be the first to share something.'}
+				</p>
+			)}
 
-export async function toggleLike(postId: string, reaction: ReactionType) {
-	const supabase = await createServerSupabaseClient();
-	const {
-		data: { user },
-	} = await supabase.auth.getUser();
-	if (!user) return { error: 'Not authenticated' };
-
-	const { data: post } = await supabase
-		.from('porch_posts')
-		.select('user_id')
-		.eq('id', postId)
-		.single();
-
-	if (post?.user_id === user.id) {
-		return { error: 'You cannot react to your own post' };
-	}
-
-	const { data: existing } = await supabase
-		.from('porch_likes')
-		.select('id, reaction_type')
-		.eq('post_id', postId)
-		.eq('user_id', user.id)
-		.maybeSingle();
-
-	if (existing && existing.reaction_type === reaction) {
-		await supabase.from('porch_likes').delete().eq('id', existing.id);
-	} else if (existing) {
-		const update: PorchLikeUpdate = { reaction_type: reaction };
-		await supabase.from('porch_likes').update(update).eq('id', existing.id);
-	} else {
-		const payload: PorchLikeInsert = {
-			post_id: postId,
-			user_id: user.id,
-			reaction_type: reaction,
-		};
-		await supabase.from('porch_likes').insert(payload);
-	}
-
-	revalidatePath('/dashboard');
-	return { success: true };
-}
-
-export async function getMorePosts(offset: number) {
-	const supabase = await createServerSupabaseClient();
-
-	const { data, error } = await supabase
-		.from('porch_posts')
-		.select(PORCH_FEED_SELECT)
-		.eq('is_public', true)
-		.order('created_at', { ascending: false })
-		.range(offset, offset + PAGE_SIZE - 1);
-
-	if (error) return { posts: [] as PorchFeedPost[], hasMore: false };
-
-	return {
-		posts: (data ?? []) as unknown as PorchFeedPost[],
-		hasMore: (data?.length ?? 0) === PAGE_SIZE,
-	};
+			{hasMore && (
+				<div className='flex justify-center pt-2'>
+					<button
+						onClick={loadMore}
+						disabled={isPending}
+						className='rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50'>
+						{isPending ? 'Loading...' : 'Load more'}
+					</button>
+				</div>
+			)}
+		</div>
+	);
 }

@@ -13,3 +13,5 @@ export * from './HeatmapGrid';
 export * from './PorchForm';
 export * from './PorchFeedList';
 export * from './ProfileForm';
+export * from './DailyUpdateButton';
+export * from './ScrollToTop';
