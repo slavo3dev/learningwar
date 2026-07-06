@@ -23,8 +23,8 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
 	}
 
 	return (
-		<aside className='flex h-screen w-64 flex-col justify-between border-r border-gray-200 bg-white p-4'>
-			<div>
+		<aside className='flex h-screen w-64 shrink-0 flex-col justify-between border-r border-gray-200 bg-white p-4'>
+			<div className='overflow-y-auto'>
 				<div className='mb-8 px-2'>
 					<span className='text-lg font-bold text-[#1a6fca]'>
 						LearningWar
