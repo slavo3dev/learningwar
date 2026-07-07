@@ -80,8 +80,8 @@ export async function LearningCalendar({ userId }: { userId: string }) {
 	const { current, longest } = calculateStreaks(new Set(countsByDay.keys()));
 
 	return (
-		<div className='rounded-xl border border-gray-200 bg-white p-6 shadow-sm'>
-			<div className='mb-4 flex items-center justify-between border-b border-gray-100 pb-4'>
+		<div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
+			<div className='mb-3 flex items-center justify-between border-b border-gray-100 pb-3'>
 				<div>
 					<p className='text-xs font-medium uppercase tracking-wide text-gray-400'>
 						Learning Calendar
