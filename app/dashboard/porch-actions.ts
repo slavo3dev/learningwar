@@ -42,10 +42,12 @@ export async function createPost(formData: FormData) {
 		tomorrow,
 		mood,
 		is_public,
-		post_date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+		post_date: new Date().toISOString().slice(0, 10),
 	};
 
-	const { error } = await supabase.from('porch_posts').insert(payload);
+	const { error } = await supabase
+		.from('porch_posts')
+		.upsert(payload, { onConflict: 'user_id,post_date' });
 
 	if (error) return { error: error.message };
 

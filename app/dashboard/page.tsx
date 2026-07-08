@@ -9,7 +9,7 @@ export default async function DashboardPage() {
 
 	return (
 		<div>
-			<div className='sticky top-0 z-10 -mx-8 -mt-8 space-y-4 bg-gray-50 px-8 pb-4 pt-8'>
+			<div className='sticky top-0 z-20 space-y-4 border-b border-gray-100 bg-gray-50/95 px-8 pb-4 pt-8 backdrop-blur-sm'>
 				<div>
 					<h1 className='text-2xl font-bold text-gray-900'>
 						Welcome back
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
 				{user && <LearningCalendar userId={user.id} />}
 			</div>
 
-			<div className='mt-4'>
+			<div className='px-8 pb-8 pt-4'>
 				<PorchFeed />
 			</div>
 		</div>

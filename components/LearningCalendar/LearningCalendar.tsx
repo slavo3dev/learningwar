@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib';
+import { createServerSupabaseClient, calculatePorchStreak } from '@/lib';
 import { HeatmapGrid } from '@/components/HeatmapGrid';
 
 function getRangeStart(days: number) {
@@ -8,66 +8,22 @@ function getRangeStart(days: number) {
 	return start;
 }
 
-function calculateStreaks(daysWithActivity: Set<string>) {
-	// Walk backward from today to find current streak
-	let current = 0;
-	const cursor = new Date();
-	cursor.setHours(0, 0, 0, 0);
-
-	while (true) {
-		const key = cursor.toISOString().slice(0, 10);
-		if (daysWithActivity.has(key)) {
-			current++;
-			cursor.setDate(cursor.getDate() - 1);
-		} else {
-			// Allow "today" to be empty without breaking the streak (day isn't over yet)
-			if (
-				current === 0 &&
-				key === new Date().toISOString().slice(0, 10)
-			) {
-				cursor.setDate(cursor.getDate() - 1);
-				continue;
-			}
-			break;
-		}
-	}
-
-	// Longest streak across the whole fetched range
-	const sortedDays = Array.from(daysWithActivity).sort();
-	let longest = 0;
-	let run = 0;
-	let prev: Date | null = null;
-
-	for (const dayStr of sortedDays) {
-		const day = new Date(dayStr);
-		if (prev) {
-			const diff =
-				(day.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
-			run = diff === 1 ? run + 1 : 1;
-		} else {
-			run = 1;
-		}
-		longest = Math.max(longest, run);
-		prev = day;
-	}
-
-	return { current, longest };
-}
-
 export async function LearningCalendar({ userId }: { userId: string }) {
 	const supabase = await createServerSupabaseClient();
 	const start = getRangeStart(365);
 
 	const { data: posts } = await supabase
 		.from('porch_posts')
-		.select('created_at')
+		.select('post_date')
 		.eq('user_id', userId)
-		.gte('created_at', start.toISOString());
+		.gte('post_date', start.toISOString().slice(0, 10));
 
 	const countsByDay = new Map<string, number>();
 	posts?.forEach((post) => {
-		const day = post.created_at.slice(0, 10); // YYYY-MM-DD
-		countsByDay.set(day, (countsByDay.get(day) ?? 0) + 1);
+		countsByDay.set(
+			post.post_date,
+			(countsByDay.get(post.post_date) ?? 0) + 1,
+		);
 	});
 
 	const activityData = Array.from(countsByDay.entries()).map(
@@ -77,7 +33,9 @@ export async function LearningCalendar({ userId }: { userId: string }) {
 		}),
 	);
 
-	const { current, longest } = calculateStreaks(new Set(countsByDay.keys()));
+	const { current, longest } = calculatePorchStreak(
+		new Set(countsByDay.keys()),
+	);
 
 	return (
 		<div className='rounded-xl border border-gray-200 bg-white p-4 shadow-sm'>
