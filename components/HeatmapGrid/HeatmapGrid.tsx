@@ -24,6 +24,17 @@ export function HeatmapGrid({ data }: { data: ActivityDay[] }) {
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
+		// Format a Date as YYYY-MM-DD using LOCAL date components.
+		// toISOString() always returns UTC, which misaligns for UTC+ users:
+		// their local midnight is the previous UTC day, causing today to disappear
+		// from the grid and post_date values (stored as UTC by the server) to mismatch.
+		function toLocalDateKey(date: Date): string {
+			const y = date.getFullYear();
+			const m = String(date.getMonth() + 1).padStart(2, '0');
+			const d = String(date.getDate()).padStart(2, '0');
+			return `${y}-${m}-${d}`;
+		}
+
 		// Start on the Sunday of the week 364 days ago
 		const start = new Date(today);
 		start.setDate(start.getDate() - 364);
@@ -38,7 +49,7 @@ export function HeatmapGrid({ data }: { data: ActivityDay[] }) {
 		while (cursor <= today) {
 			const week: { date: string; count: number }[] = [];
 			for (let d = 0; d < 7; d++) {
-				const key = cursor.toISOString().slice(0, 10);
+				const key = toLocalDateKey(cursor);
 				week.push({ date: key, count: countsByDay.get(key) ?? 0 });
 
 				if (
