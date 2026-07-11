@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib';
-import { ProfileHeader, ProfileForm, LearningCalendar } from '@/components';
+import {
+	ProfileHeader,
+	ProfileForm,
+	LearningCalendar,
+	MentorCard,
+} from '@/components';
+import { getMyMentor } from '@/app/dashboard/inbox-actions';
 
 export default async function ProfilePage() {
 	const supabase = await createServerSupabaseClient();
@@ -20,9 +26,12 @@ export default async function ProfilePage() {
 		return <p className='p-8 text-sm text-gray-500'>Profile not found.</p>;
 	}
 
+	const isStudent = profile.role === 'student';
+	const mentor = isStudent ? await getMyMentor() : null;
+
 	return (
-		<div className='max-w-2xl space-y-4 p-8'>
-			<div>
+		<div className='max-w-6xl p-8'>
+			<div className='mb-6'>
 				<h1 className='mb-1 text-2xl font-bold text-gray-900'>
 					Your profile
 				</h1>
@@ -31,9 +40,17 @@ export default async function ProfilePage() {
 				</p>
 			</div>
 
-			<ProfileHeader userId={user.id} />
-			<LearningCalendar userId={user.id} />
-			<ProfileForm profile={profile} />
+			<div className='grid grid-cols-1 gap-6 lg:grid-cols-3'>
+				<div className='space-y-4 lg:col-span-2'>
+					<ProfileHeader userId={user.id} />
+					<ProfileForm profile={profile} />
+				</div>
+
+				<div className='space-y-4 lg:col-span-1'>
+					{isStudent && <MentorCard mentor={mentor} />}
+					<LearningCalendar userId={user.id} />
+				</div>
+			</div>
 		</div>
 	);
 }
