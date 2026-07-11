@@ -25,3 +25,4 @@ export * from './MentorStudentList';
 export * from './UserRoleManager';
 export * from './MentorCard';
 export * from './RankLadder';
+export * from './RegisterServiceWorker';
