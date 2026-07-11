@@ -20,3 +20,5 @@ export * from './SessionRunner';
 export * from './SessionHistory';
 export * from './PrepRunner';
 export * from './PrepHistory';
+export * from './MessageThread';
+export * from './MentorStudentList';

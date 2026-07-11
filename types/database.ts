@@ -28,6 +28,8 @@ export interface Database {
 					show_email: boolean;
 					created_at: string;
 					updated_at: string;
+					is_mentor: boolean;
+					is_admin: boolean;
 				};
 				Insert: {
 					id: string;
@@ -43,6 +45,8 @@ export interface Database {
 					timezone?: string;
 					email?: string | null;
 					show_email?: boolean;
+					is_mentor: boolean;
+					is_admin: boolean;
 				};
 				Update: {
 					username?: string;
@@ -53,6 +57,8 @@ export interface Database {
 					timezone?: string;
 					show_email?: boolean;
 					updated_at?: string;
+					is_mentor: boolean;
+					is_admin: boolean;
 				};
 				Relationships: [
 					{
@@ -290,6 +296,97 @@ export interface Database {
 						foreignKeyName: 'prep_sessions_user_id_fkey';
 						columns: ['user_id'];
 						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			mentor_assignments: {
+				Row: {
+					id: string;
+					student_id: string;
+					mentor_id: string;
+					status: string;
+					assigned_at: string;
+				};
+				Insert: {
+					id?: string;
+					student_id: string;
+					mentor_id: string;
+					status?: string;
+					assigned_at?: string;
+				};
+				Update: {
+					id?: string;
+					student_id?: string;
+					mentor_id?: string;
+					status?: string;
+					assigned_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'mentor_assignments_student_id_fkey';
+						columns: ['student_id'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'mentor_assignments_mentor_id_fkey';
+						columns: ['mentor_id'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
+			mentor_messages: {
+				Row: {
+					id: string;
+					student_id: string;
+					sender_id: string;
+					parent_id: string | null;
+					body: string;
+					read_at: string | null;
+					created_at: string;
+				};
+				Insert: {
+					id?: string;
+					student_id: string;
+					sender_id: string;
+					parent_id?: string | null;
+					body: string;
+					read_at?: string | null;
+					created_at?: string;
+				};
+				Update: {
+					id?: string;
+					student_id?: string;
+					sender_id?: string;
+					parent_id?: string | null;
+					body?: string;
+					read_at?: string | null;
+					created_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'mentor_messages_student_id_fkey';
+						columns: ['student_id'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'mentor_messages_sender_id_fkey';
+						columns: ['sender_id'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'mentor_messages_parent_id_fkey';
+						columns: ['parent_id'];
+						isOneToOne: false;
+						referencedRelation: 'mentor_messages';
 						referencedColumns: ['id'];
 					},
 				];
