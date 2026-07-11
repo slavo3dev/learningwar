@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
 	startPrepQA,
 	finalizePrepQA,
 	generatePrepGuideSession,
+	savePrepProgress,
+	abandonPrepSession,
 } from '@/app/dashboard/prep/prep-actions';
 import {
 	TRACK_META,
@@ -16,10 +18,26 @@ import {
 	type PrepAnswerResult,
 } from '@/lib/prepConstants';
 import { DIFFICULTY_META, type SessionDifficulty } from '@/lib/quizConstants';
+import type { PrepSession } from '@/types/database';
 
 type Stage = 'setup' | 'qa' | 'guide' | 'results';
 
-export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
+const AUTOSAVE_INTERVAL_MS = 15_000;
+const DURATION_OPTIONS_MIN = [5, 10, 15, 20];
+
+function formatTime(totalSeconds: number) {
+	const m = Math.floor(totalSeconds / 60);
+	const s = totalSeconds % 60;
+	return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+export function PrepRunner({
+	recentTopics,
+	inProgressSession,
+}: {
+	recentTopics: string[];
+	inProgressSession: PrepSession | null;
+}) {
 	const router = useRouter();
 	const [stage, setStage] = useState<Stage>('setup');
 	const [track, setTrack] = useState<PrepTrack>('interview');
@@ -29,6 +47,8 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 	const [difficulty, setDifficulty] = useState<SessionDifficulty>('medium');
 	const [questionCount, setQuestionCount] = useState<number>(6);
 	const [customCount, setCustomCount] = useState('');
+	const [durationMinutes, setDurationMinutes] = useState<number>(10);
+	const [customDuration, setCustomDuration] = useState('');
 	const [questions, setQuestions] = useState<PrepQuestion[]>([]);
 	const [answers, setAnswers] = useState<Record<string, string>>({});
 	const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,6 +57,82 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 	const [guide, setGuide] = useState('');
 	const [results, setResults] = useState<PrepAnswerResult[]>([]);
 	const [overallScore, setOverallScore] = useState(0);
+	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+	const [resumeChoicePending, setResumeChoicePending] =
+		useState(!!inProgressSession);
+
+	const answersRef = useRef(answers);
+	answersRef.current = answers;
+	const secondsLeftRef = useRef(secondsLeft);
+	secondsLeftRef.current = secondsLeft;
+	const sessionIdRef = useRef(sessionId);
+	sessionIdRef.current = sessionId;
+
+	// Countdown ticker — runs once a second while actively answering.
+	useEffect(() => {
+		if (stage !== 'qa' || secondsLeft === null) return;
+		if (secondsLeft <= 0) {
+			handleSubmitAll();
+			return;
+		}
+		const tick = setInterval(() => {
+			setSecondsLeft((s) => (s !== null ? s - 1 : s));
+		}, 1000);
+		return () => clearInterval(tick);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [stage, secondsLeft]);
+
+	// Periodic autosave — protects against a closed tab / crash mid-session.
+	useEffect(() => {
+		if (stage !== 'qa' || !sessionId) return;
+		const interval = setInterval(() => {
+			savePrepProgress(
+				sessionIdRef.current!,
+				answersRef.current,
+				secondsLeftRef.current ?? 0,
+			);
+		}, AUTOSAVE_INTERVAL_MS);
+		return () => clearInterval(interval);
+	}, [stage, sessionId]);
+
+	function saveNow() {
+		if (!sessionId) return;
+		savePrepProgress(
+			sessionId,
+			answersRef.current,
+			secondsLeftRef.current ?? 0,
+		);
+	}
+
+	async function handleResume() {
+		if (!inProgressSession) return;
+		const savedAnswers =
+			(
+				inProgressSession.details as {
+					answers?: Record<string, string>;
+				} | null
+			)?.answers ?? {};
+		setSessionId(inProgressSession.id);
+		setTrack(inProgressSession.track as PrepTrack);
+		setTopic(inProgressSession.topic);
+		setRole(inProgressSession.role ?? '');
+		setDifficulty(
+			(inProgressSession.difficulty as SessionDifficulty) ?? 'medium',
+		);
+		setQuestions((inProgressSession.questions as PrepQuestion[]) ?? []);
+		setAnswers(savedAnswers);
+		setSecondsLeft(inProgressSession.duration_left_seconds ?? 0);
+		setCurrentIndex(0);
+		setResumeChoicePending(false);
+		setStage('qa');
+	}
+
+	async function handleDiscardResume() {
+		if (!inProgressSession) return;
+		await abandonPrepSession(inProgressSession.id);
+		setResumeChoicePending(false);
+	}
 
 	async function handleStart() {
 		if (!topic.trim()) {
@@ -59,33 +155,49 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 			return;
 		}
 
+		const totalDurationSeconds = durationMinutes * 60;
 		const result = await startPrepQA(
 			track,
 			topic,
 			role,
 			difficulty,
 			questionCount,
+			totalDurationSeconds,
 		);
 		setIsLoading(false);
-		if (result.error || !result.questions) {
+		if (result.error || !result.questions || !result.sessionId) {
 			setError(result.error ?? 'Something went wrong');
 			return;
 		}
 		setQuestions(result.questions);
 		setAnswers({});
 		setCurrentIndex(0);
+		setSessionId(result.sessionId);
+		setSecondsLeft(totalDurationSeconds);
 		setStage('qa');
 	}
 
+	function goNext() {
+		saveNow();
+		setCurrentIndex((i) => i + 1);
+	}
+
+	function goBack() {
+		saveNow();
+		setCurrentIndex((i) => Math.max(0, i - 1));
+	}
+
 	async function handleSubmitAll() {
+		if (!sessionId) return;
 		setIsLoading(true);
 		const result = await finalizePrepQA({
+			sessionId,
 			track,
 			topic,
 			role,
 			difficulty,
 			questions,
-			answers,
+			answers: answersRef.current,
 		});
 		setIsLoading(false);
 		if (result.error) {
@@ -107,6 +219,44 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 		setGuide('');
 		setResults([]);
 		setError(null);
+		setSessionId(null);
+		setSecondsLeft(null);
+	}
+
+	if (resumeChoicePending && inProgressSession) {
+		return (
+			<div className='rounded-xl border border-[#1a6fca]/30 bg-[#1a6fca]/5 p-6 shadow-sm'>
+				<h2 className='text-base font-semibold text-gray-900'>
+					Pick up where you left off?
+				</h2>
+				<p className='mt-1 text-sm text-gray-600'>
+					You have an unfinished{' '}
+					{TRACK_META[inProgressSession.track as PrepTrack]?.label ??
+						inProgressSession.track}{' '}
+					session on{' '}
+					<span className='font-medium'>
+						&ldquo;{inProgressSession.topic}&rdquo;
+					</span>{' '}
+					with{' '}
+					{inProgressSession.duration_left_seconds != null
+						? formatTime(inProgressSession.duration_left_seconds)
+						: 'time'}{' '}
+					left.
+				</p>
+				<div className='mt-4 flex gap-2'>
+					<button
+						onClick={handleResume}
+						className='rounded-lg bg-[#1a6fca] px-5 py-2 text-sm font-medium text-white hover:bg-[#1558a3]'>
+						Resume session
+					</button>
+					<button
+						onClick={handleDiscardResume}
+						className='rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50'>
+						Discard &amp; start new
+					</button>
+				</div>
+			</div>
+		);
 	}
 
 	if (stage === 'setup') {
@@ -282,6 +432,59 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 								/>
 							</div>
 						</div>
+
+						<div className='mt-4'>
+							<p className='mb-1.5 text-sm font-medium text-gray-700'>
+								Time limit
+							</p>
+							<div className='flex flex-wrap items-center gap-2'>
+								{DURATION_OPTIONS_MIN.map((n) => (
+									<button
+										key={n}
+										onClick={() => {
+											setDurationMinutes(n);
+											setCustomDuration('');
+										}}
+										className={`rounded-lg border px-4 py-1.5 text-sm font-medium transition-colors ${
+											durationMinutes === n &&
+											!customDuration
+												? 'border-[#1a6fca] bg-[#1a6fca]/10 text-[#1a6fca]'
+												: 'border-gray-200 text-gray-600 hover:bg-gray-50'
+										}`}>
+										{n} min
+									</button>
+								))}
+								<input
+									type='number'
+									min={1}
+									max={120}
+									value={customDuration}
+									onChange={(e) => {
+										const val = e.target.value;
+										setCustomDuration(val);
+										const num = parseInt(val, 10);
+										if (
+											!isNaN(num) &&
+											num >= 1 &&
+											num <= 120
+										) {
+											setDurationMinutes(num);
+										}
+									}}
+									placeholder='Custom min'
+									className={`w-24 rounded-lg border px-3 py-1.5 text-sm outline-none transition-colors ${
+										customDuration
+											? 'border-[#1a6fca] bg-[#1a6fca]/5 text-[#1a6fca]'
+											: 'border-gray-200 text-gray-600 focus:border-[#1a6fca]'
+									}`}
+								/>
+							</div>
+							<p className='mt-1.5 text-xs text-gray-400'>
+								Your session auto-submits when time runs out —
+								progress saves automatically, so closing the tab
+								won&apos;t lose your answers.
+							</p>
+						</div>
 					</>
 				)}
 
@@ -340,6 +543,7 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 		const q = questions[currentIndex];
 		const isLast = currentIndex === questions.length - 1;
 		const hasAnswer = (answers[q.id] ?? '').trim().length > 0;
+		const timeLow = secondsLeft !== null && secondsLeft <= 60;
 
 		return (
 			<div className='rounded-xl border border-gray-200 bg-white p-6 shadow-sm'>
@@ -348,13 +552,25 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 						{TRACK_META[track].label} · Question {currentIndex + 1}{' '}
 						of {questions.length}
 					</p>
-					<div className='h-1.5 w-32 overflow-hidden rounded-full bg-gray-100'>
-						<div
-							className='h-full bg-[#1a6fca] transition-all'
-							style={{
-								width: `${((currentIndex + 1) / questions.length) * 100}%`,
-							}}
-						/>
+					<div className='flex items-center gap-3'>
+						{secondsLeft !== null && (
+							<span
+								className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
+									timeLow
+										? 'bg-red-100 text-red-700'
+										: 'bg-gray-100 text-gray-600'
+								}`}>
+								{formatTime(secondsLeft)}
+							</span>
+						)}
+						<div className='h-1.5 w-32 overflow-hidden rounded-full bg-gray-100'>
+							<div
+								className='h-full bg-[#1a6fca] transition-all'
+								style={{
+									width: `${((currentIndex + 1) / questions.length) * 100}%`,
+								}}
+							/>
+						</div>
 					</div>
 				</div>
 
@@ -379,9 +595,7 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 
 				<div className='mt-5 flex justify-between'>
 					<button
-						onClick={() =>
-							setCurrentIndex((i) => Math.max(0, i - 1))
-						}
+						onClick={goBack}
 						disabled={currentIndex === 0}
 						className='rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-40'>
 						Back
@@ -397,7 +611,7 @@ export function PrepRunner({ recentTopics }: { recentTopics: string[] }) {
 						</button>
 					) : (
 						<button
-							onClick={() => setCurrentIndex((i) => i + 1)}
+							onClick={goNext}
 							disabled={!hasAnswer}
 							className='rounded-lg bg-[#1a6fca] px-5 py-2 text-sm font-medium text-white hover:bg-[#1558a3] disabled:opacity-50'>
 							Next

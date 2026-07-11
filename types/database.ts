@@ -7,6 +7,7 @@ export type ActivityType =
 	| 'mentor_msg_read';
 export type ReportPeriod = 'weekly' | 'monthly' | 'custom';
 export type ReactionType = 'spartan' | 'lion' | 'wolf';
+export type SessionStatus = 'in_progress' | 'completed';
 
 export interface Database {
 	public: {
@@ -70,6 +71,11 @@ export interface Database {
 					topic: string;
 					score: number | null;
 					difficulty: string | null;
+					status: SessionStatus;
+					questions: unknown | null;
+					answered_count: number;
+					duration_seconds: number | null;
+					duration_left_seconds: number | null;
 					details: unknown | null;
 					completed_at: string | null;
 					created_at: string;
@@ -80,6 +86,11 @@ export interface Database {
 					topic: string;
 					score?: number | null;
 					difficulty?: string | null;
+					status?: SessionStatus;
+					questions?: unknown | null;
+					answered_count?: number;
+					duration_seconds?: number | null;
+					duration_left_seconds?: number | null;
 					details?: unknown | null;
 					completed_at?: string | null;
 				};
@@ -87,6 +98,11 @@ export interface Database {
 					topic?: string;
 					score?: number | null;
 					difficulty?: string | null;
+					status?: SessionStatus;
+					questions?: unknown | null;
+					answered_count?: number;
+					duration_seconds?: number | null;
+					duration_left_seconds?: number | null;
 					details?: unknown | null;
 					completed_at?: string | null;
 				};
@@ -264,6 +280,11 @@ export interface Database {
 					role: string | null;
 					difficulty: string | null;
 					overall_score: number | null;
+					status: SessionStatus;
+					questions: unknown | null;
+					answered_count: number;
+					duration_seconds: number | null;
+					duration_left_seconds: number | null;
 					details: unknown | null;
 					created_at: string;
 					completed_at: string | null;
@@ -277,11 +298,26 @@ export interface Database {
 					role?: string | null;
 					difficulty?: string | null;
 					overall_score?: number | null;
+					status?: SessionStatus;
+					questions?: unknown | null;
+					answered_count?: number;
+					duration_seconds?: number | null;
+					duration_left_seconds?: number | null;
 					details?: unknown | null;
 					completed_at?: string | null;
 				};
 				Update: {
+					track?: string;
+					mode?: string;
+					topic?: string;
+					role?: string | null;
+					difficulty?: string | null;
 					overall_score?: number | null;
+					status?: SessionStatus;
+					questions?: unknown | null;
+					answered_count?: number;
+					duration_seconds?: number | null;
+					duration_left_seconds?: number | null;
 					details?: unknown | null;
 					completed_at?: string | null;
 				};

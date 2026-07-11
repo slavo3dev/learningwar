@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { createServerSupabaseClient } from '@/lib';
 import { generateQuizQuestions, gradeOpenEnded } from '@/lib/anthropic';
 import type { QuizQuestion, SessionDifficulty } from '@/lib/quizConstants';
@@ -11,26 +12,126 @@ export async function startSession(
 	topic: string,
 	questionCount: number,
 	difficulty: SessionDifficulty,
+	durationSeconds: number,
 ) {
 	if (!topic.trim()) return { error: 'Please enter a topic' };
+
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	let questions: QuizQuestion[];
 	try {
-		const questions = await generateQuizQuestions(
+		questions = await generateQuizQuestions(
 			topic.trim(),
 			questionCount,
 			difficulty,
 		);
-		return { questions };
 	} catch {
 		return { error: 'Failed to generate quiz. Try again.' };
 	}
+
+	const payload: SessionInsert = {
+		user_id: user.id,
+		topic: topic.trim(),
+		difficulty,
+		status: 'in_progress',
+		questions,
+		answered_count: 0,
+		duration_seconds: durationSeconds,
+		duration_left_seconds: durationSeconds,
+		details: { answers: {} },
+	};
+
+	const { data, error } = await supabase
+		.from('sessions')
+		.insert(payload)
+		.select('id')
+		.single();
+
+	if (error || !data)
+		return { error: error?.message ?? 'Failed to start session' };
+
+	return { questions, sessionId: data.id };
+}
+
+export async function saveSessionProgress(
+	sessionId: string,
+	answers: Record<string, string | number>,
+	durationLeftSeconds: number,
+) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const answeredCount = Object.values(answers).filter(
+		(a) => a !== '' && a !== undefined && a !== null,
+	).length;
+
+	const { error } = await supabase
+		.from('sessions')
+		.update({
+			details: { answers },
+			answered_count: answeredCount,
+			duration_left_seconds: durationLeftSeconds,
+		})
+		.eq('id', sessionId)
+		.eq('user_id', user.id)
+		.eq('status', 'in_progress');
+
+	if (error) return { error: error.message };
+	return { saved: true };
+}
+
+export async function getInProgressSession() {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return null;
+
+	const { data } = await supabase
+		.from('sessions')
+		.select('*')
+		.eq('user_id', user.id)
+		.eq('status', 'in_progress')
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	return data ?? null;
+}
+
+export async function abandonSession(sessionId: string) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const { error } = await supabase
+		.from('sessions')
+		.delete()
+		.eq('id', sessionId)
+		.eq('user_id', user.id)
+		.eq('status', 'in_progress');
+
+	if (error) return { error: error.message };
+	return { abandoned: true };
 }
 
 export async function submitSession({
+	sessionId,
 	topic,
 	difficulty,
 	questions,
 	answers,
 }: {
+	sessionId: string;
 	topic: string;
 	difficulty: SessionDifficulty;
 	questions: QuizQuestion[];
@@ -93,19 +194,24 @@ export async function submitSession({
 
 	const score = Math.round((correctCount / questions.length) * 100);
 
-	const payload: SessionInsert = {
-		user_id: user.id,
-		topic,
-		score,
-		difficulty,
-		details: { results },
-		completed_at: new Date().toISOString(),
-	};
-
-	const { error } = await supabase.from('sessions').insert(payload);
+	const { error } = await supabase
+		.from('sessions')
+		.update({
+			topic,
+			difficulty,
+			status: 'completed',
+			score,
+			answered_count: results.length,
+			duration_left_seconds: 0,
+			details: { results },
+			completed_at: new Date().toISOString(),
+		})
+		.eq('id', sessionId)
+		.eq('user_id', user.id);
 
 	if (error) return { error: error.message };
 
+	revalidatePath('/dashboard/sessions');
 	return { score, results };
 }
 
@@ -139,6 +245,7 @@ export async function getSessionHistory() {
 			'id, topic, score, difficulty, details, completed_at, created_at',
 		)
 		.eq('user_id', user.id)
+		.eq('status', 'completed')
 		.order('created_at', { ascending: false })
 		.limit(20);
 
@@ -152,8 +259,6 @@ export async function deleteSession(sessionId: string) {
 	} = await supabase.auth.getUser();
 	if (!user) return { error: 'Not authenticated' };
 
-	// Scoped to the owning user explicitly, on top of whatever RLS
-	// policy already exists on sessions — belt and suspenders.
 	const { error } = await supabase
 		.from('sessions')
 		.delete()
@@ -161,6 +266,5 @@ export async function deleteSession(sessionId: string) {
 		.eq('user_id', user.id);
 
 	if (error) return { error: error.message };
-
 	return { deleted: true };
 }

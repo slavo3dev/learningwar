@@ -10,11 +10,19 @@ import type { PrepSession } from '@/types/database';
 import { deletePrepSession } from '@/app/dashboard/prep/prep-actions';
 
 export function PrepHistory({
-	sessions: initialSessions,
+	sessions: allSessions,
 }: {
 	sessions: PrepSession[];
 }) {
-	const [sessions, setSessions] = useState(initialSessions);
+	// Instead of mirroring `sessions` into local state (which needs a
+	// useEffect to stay in sync with fresh server data — an anti-pattern
+	// React warns about), we track only the IDs removed this render pass
+	// and filter them out of the prop directly during render. The prop
+	// itself is always the source of truth, so a fresh fetch after
+	// router.refresh() is reflected immediately with no sync step.
+	const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+	const sessions = allSessions.filter((s) => !deletedIds.has(s.id));
+
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -28,7 +36,7 @@ export function PrepHistory({
 				setDeleteError(result.error);
 				return;
 			}
-			setSessions((prev) => prev.filter((s) => s.id !== id));
+			setDeletedIds((prev) => new Set(prev).add(id));
 			setConfirmDeleteId(null);
 			if (expandedId === id) setExpandedId(null);
 		});

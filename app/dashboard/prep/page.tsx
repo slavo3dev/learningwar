@@ -1,10 +1,15 @@
-import { getRecentPorchTopics, getPrepHistory } from './prep-actions';
+import {
+	getRecentPorchTopics,
+	getPrepHistory,
+	getInProgressPrepSession,
+} from './prep-actions';
 import { PrepRunner, PrepHistory } from '@/components';
 
 export default async function PrepPage() {
-	const [recentTopics, sessions] = await Promise.all([
+	const [recentTopics, sessions, inProgressSession] = await Promise.all([
 		getRecentPorchTopics(),
 		getPrepHistory(),
+		getInProgressPrepSession(),
 	]);
 
 	return (
@@ -20,7 +25,10 @@ export default async function PrepPage() {
 			</div>
 
 			<div className='grid grid-cols-1 gap-4 lg:grid-cols-[1fr_420px]'>
-				<PrepRunner recentTopics={recentTopics} />
+				<PrepRunner
+					recentTopics={recentTopics}
+					inProgressSession={inProgressSession}
+				/>
 				<div className='lg:sticky lg:top-8 lg:self-start'>
 					<PrepHistory sessions={sessions} />
 				</div>

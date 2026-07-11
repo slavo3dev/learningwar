@@ -35,29 +35,138 @@ export async function getRecentPorchTopics() {
 	return (data ?? []).map((d) => d.what_learned);
 }
 
+// Starts a Q&A session: generates questions, then immediately persists
+// a row with status='in_progress' so it can be resumed if abandoned.
 export async function startPrepQA(
 	track: PrepTrack,
 	topic: string,
 	role: string,
 	difficulty: SessionDifficulty,
 	count: number,
+	durationSeconds: number,
 ) {
 	if (!topic.trim()) return { error: 'Please enter a topic' };
+
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	let questions: PrepQuestion[];
 	try {
-		const questions = await generatePrepQuestions(
+		questions = await generatePrepQuestions(
 			track,
 			topic.trim(),
 			role.trim(),
 			difficulty,
 			count,
 		);
-		return { questions };
 	} catch {
 		return { error: 'Failed to generate questions. Try again.' };
 	}
+
+	const payload: PrepSessionInsert = {
+		user_id: user.id,
+		track,
+		mode: 'qa',
+		topic: topic.trim(),
+		role: role.trim() || null,
+		difficulty,
+		status: 'in_progress',
+		questions,
+		answered_count: 0,
+		duration_seconds: durationSeconds,
+		duration_left_seconds: durationSeconds,
+		details: { answers: {} },
+	};
+
+	const { data, error } = await supabase
+		.from('prep_sessions')
+		.insert(payload)
+		.select('id')
+		.single();
+
+	if (error || !data)
+		return { error: error?.message ?? 'Failed to start session' };
+
+	return { questions, sessionId: data.id };
+}
+
+// Incremental save — called periodically and on every question navigation.
+// Stores raw answers only (not yet graded); grading happens once at finalize.
+export async function savePrepProgress(
+	sessionId: string,
+	answers: Record<string, string>,
+	durationLeftSeconds: number,
+) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const answeredCount = Object.values(answers).filter(
+		(a) => a.trim().length > 0,
+	).length;
+
+	const { error } = await supabase
+		.from('prep_sessions')
+		.update({
+			details: { answers },
+			answered_count: answeredCount,
+			duration_left_seconds: durationLeftSeconds,
+		})
+		.eq('id', sessionId)
+		.eq('user_id', user.id)
+		.eq('status', 'in_progress');
+
+	if (error) return { error: error.message };
+	return { saved: true };
+}
+
+// Looks for an unfinished Q&A session so the runner can offer to resume it.
+export async function getInProgressPrepSession() {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return null;
+
+	const { data } = await supabase
+		.from('prep_sessions')
+		.select('*')
+		.eq('user_id', user.id)
+		.eq('status', 'in_progress')
+		.eq('mode', 'qa')
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	return data ?? null;
+}
+
+// Lets the person discard an in-progress session instead of resuming it.
+export async function abandonPrepSession(sessionId: string) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const { error } = await supabase
+		.from('prep_sessions')
+		.delete()
+		.eq('id', sessionId)
+		.eq('user_id', user.id)
+		.eq('status', 'in_progress');
+
+	if (error) return { error: error.message };
+	return { abandoned: true };
 }
 
 export async function finalizePrepQA({
+	sessionId,
 	track,
 	topic,
 	role,
@@ -65,6 +174,7 @@ export async function finalizePrepQA({
 	questions,
 	answers,
 }: {
+	sessionId: string;
 	track: PrepTrack;
 	topic: string;
 	role: string;
@@ -105,19 +215,23 @@ export async function finalizePrepQA({
 				results.length,
 		) * 10; // scale 0-10 avg to a 0-100 score
 
-	const payload: PrepSessionInsert = {
-		user_id: user.id,
-		track,
-		mode: 'qa',
-		topic,
-		role: role || null,
-		difficulty,
-		overall_score: overallScore,
-		details: { results },
-		completed_at: new Date().toISOString(),
-	};
+	const { error } = await supabase
+		.from('prep_sessions')
+		.update({
+			track,
+			topic,
+			role: role || null,
+			difficulty,
+			status: 'completed',
+			overall_score: overallScore,
+			answered_count: results.length,
+			duration_left_seconds: 0,
+			details: { results },
+			completed_at: new Date().toISOString(),
+		})
+		.eq('id', sessionId)
+		.eq('user_id', user.id);
 
-	const { error } = await supabase.from('prep_sessions').insert(payload);
 	if (error) return { error: error.message };
 
 	revalidatePath('/dashboard/prep');
@@ -150,6 +264,7 @@ export async function generatePrepGuideSession(
 		mode: 'guide',
 		topic,
 		role: role || null,
+		status: 'completed',
 		details: { guide },
 		completed_at: new Date().toISOString(),
 	};
@@ -172,6 +287,7 @@ export async function getPrepHistory() {
 		.from('prep_sessions')
 		.select('*')
 		.eq('user_id', user.id)
+		.eq('status', 'completed')
 		.order('created_at', { ascending: false })
 		.limit(20);
 
@@ -185,8 +301,6 @@ export async function deletePrepSession(sessionId: string) {
 	} = await supabase.auth.getUser();
 	if (!user) return { error: 'Not authenticated' };
 
-	// Scoped to the owning user explicitly, on top of whatever RLS
-	// policy already exists on prep_sessions — belt and suspenders.
 	const { error } = await supabase
 		.from('prep_sessions')
 		.delete()

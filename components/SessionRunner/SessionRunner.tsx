@@ -1,23 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
 	startSession,
 	submitSession,
+	saveSessionProgress,
+	abandonSession,
 } from '@/app/dashboard/sessions/session-actions';
 import {
 	DIFFICULTY_META,
 	type QuizQuestion,
 	type SessionDifficulty,
 } from '@/lib/quizConstants';
+import type { Session } from '@/types/database';
 
 type Stage = 'setup' | 'quiz' | 'results';
 
-export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
+const AUTOSAVE_INTERVAL_MS = 15_000;
+const DURATION_OPTIONS_MIN = [5, 10, 15, 20];
+
+function formatTime(totalSeconds: number) {
+	const m = Math.floor(totalSeconds / 60);
+	const s = totalSeconds % 60;
+	return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+export function SessionRunner({
+	recentTopics,
+	inProgressSession,
+}: {
+	recentTopics: string[];
+	inProgressSession: Session | null;
+}) {
 	const [stage, setStage] = useState<Stage>('setup');
 	const [topic, setTopic] = useState('');
 	const [questionCount, setQuestionCount] = useState<6 | 9>(6);
 	const [difficulty, setDifficulty] = useState<SessionDifficulty>('medium');
+	const [durationMinutes, setDurationMinutes] = useState<number>(10);
+	const [customDuration, setCustomDuration] = useState('');
 	const [questions, setQuestions] = useState<QuizQuestion[]>([]);
 	const [answers, setAnswers] = useState<Record<string, string | number>>({});
 	const [currentIndex, setCurrentIndex] = useState(0);
@@ -27,6 +47,84 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 		{ id: string; correct: boolean; feedback?: string }[]
 	>([]);
 	const [score, setScore] = useState(0);
+	const [sessionId, setSessionId] = useState<string | null>(null);
+	const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+	const [resumeChoicePending, setResumeChoicePending] =
+		useState(!!inProgressSession);
+
+	const answersRef = useRef(answers);
+	answersRef.current = answers;
+	const secondsLeftRef = useRef(secondsLeft);
+	secondsLeftRef.current = secondsLeft;
+	const sessionIdRef = useRef(sessionId);
+	sessionIdRef.current = sessionId;
+	const questionsRef = useRef(questions);
+	questionsRef.current = questions;
+	const topicRef = useRef(topic);
+	topicRef.current = topic;
+	const difficultyRef = useRef(difficulty);
+	difficultyRef.current = difficulty;
+
+	useEffect(() => {
+		if (stage !== 'quiz' || secondsLeft === null) return;
+		if (secondsLeft <= 0) {
+			handleSubmit();
+			return;
+		}
+		const tick = setInterval(() => {
+			setSecondsLeft((s) => (s !== null ? s - 1 : s));
+		}, 1000);
+		return () => clearInterval(tick);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [stage, secondsLeft]);
+
+	useEffect(() => {
+		if (stage !== 'quiz' || !sessionId) return;
+		const interval = setInterval(() => {
+			saveSessionProgress(
+				sessionIdRef.current!,
+				answersRef.current,
+				secondsLeftRef.current ?? 0,
+			);
+		}, AUTOSAVE_INTERVAL_MS);
+		return () => clearInterval(interval);
+	}, [stage, sessionId]);
+
+	function saveNow() {
+		if (!sessionId) return;
+		saveSessionProgress(
+			sessionId,
+			answersRef.current,
+			secondsLeftRef.current ?? 0,
+		);
+	}
+
+	async function handleResume() {
+		if (!inProgressSession) return;
+		const savedAnswers =
+			(
+				inProgressSession.details as {
+					answers?: Record<string, string | number>;
+				} | null
+			)?.answers ?? {};
+		setSessionId(inProgressSession.id);
+		setTopic(inProgressSession.topic);
+		setDifficulty(
+			(inProgressSession.difficulty as SessionDifficulty) ?? 'medium',
+		);
+		setQuestions((inProgressSession.questions as QuizQuestion[]) ?? []);
+		setAnswers(savedAnswers);
+		setSecondsLeft(inProgressSession.duration_left_seconds ?? 0);
+		setCurrentIndex(0);
+		setResumeChoicePending(false);
+		setStage('quiz');
+	}
+
+	async function handleDiscardResume() {
+		if (!inProgressSession) return;
+		await abandonSession(inProgressSession.id);
+		setResumeChoicePending(false);
+	}
 
 	async function handleStart() {
 		if (!topic.trim()) {
@@ -35,15 +133,23 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 		}
 		setError(null);
 		setIsLoading(true);
-		const result = await startSession(topic, questionCount, difficulty);
+		const totalDurationSeconds = durationMinutes * 60;
+		const result = await startSession(
+			topic,
+			questionCount,
+			difficulty,
+			totalDurationSeconds,
+		);
 		setIsLoading(false);
-		if (result.error || !result.questions) {
+		if (result.error || !result.questions || !result.sessionId) {
 			setError(result.error ?? 'Something went wrong');
 			return;
 		}
 		setQuestions(result.questions);
 		setAnswers({});
 		setCurrentIndex(0);
+		setSessionId(result.sessionId);
+		setSecondsLeft(totalDurationSeconds);
 		setStage('quiz');
 	}
 
@@ -51,13 +157,25 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 		setAnswers((prev) => ({ ...prev, [id]: value }));
 	}
 
+	function goNext() {
+		saveNow();
+		setCurrentIndex((i) => i + 1);
+	}
+
+	function goBack() {
+		saveNow();
+		setCurrentIndex((i) => Math.max(0, i - 1));
+	}
+
 	async function handleSubmit() {
+		if (!sessionIdRef.current) return;
 		setIsLoading(true);
 		const result = await submitSession({
-			topic,
-			difficulty,
-			questions,
-			answers,
+			sessionId: sessionIdRef.current,
+			topic: topicRef.current,
+			difficulty: difficultyRef.current,
+			questions: questionsRef.current,
+			answers: answersRef.current,
 		});
 		setIsLoading(false);
 		if (result.error) {
@@ -76,6 +194,41 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 		setAnswers({});
 		setResults([]);
 		setError(null);
+		setSessionId(null);
+		setSecondsLeft(null);
+	}
+
+	if (resumeChoicePending && inProgressSession) {
+		return (
+			<div className='rounded-xl border border-[#1a6fca]/30 bg-[#1a6fca]/5 p-6 shadow-sm'>
+				<h2 className='text-base font-semibold text-gray-900'>
+					Pick up where you left off?
+				</h2>
+				<p className='mt-1 text-sm text-gray-600'>
+					You have an unfinished knowledge check on{' '}
+					<span className='font-medium'>
+						&ldquo;{inProgressSession.topic}&rdquo;
+					</span>{' '}
+					with{' '}
+					{inProgressSession.duration_left_seconds != null
+						? formatTime(inProgressSession.duration_left_seconds)
+						: 'time'}{' '}
+					left.
+				</p>
+				<div className='mt-4 flex gap-2'>
+					<button
+						onClick={handleResume}
+						className='rounded-lg bg-[#1a6fca] px-5 py-2 text-sm font-medium text-white hover:bg-[#1558a3]'>
+						Resume session
+					</button>
+					<button
+						onClick={handleDiscardResume}
+						className='rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50'>
+						Discard &amp; start new
+					</button>
+				</div>
+			</div>
+		);
 	}
 
 	if (stage === 'setup') {
@@ -176,6 +329,54 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 					</div>
 				</div>
 
+				<div className='mt-4'>
+					<p className='mb-1.5 text-sm font-medium text-gray-700'>
+						Time limit
+					</p>
+					<div className='flex flex-wrap items-center gap-2'>
+						{DURATION_OPTIONS_MIN.map((n) => (
+							<button
+								key={n}
+								onClick={() => {
+									setDurationMinutes(n);
+									setCustomDuration('');
+								}}
+								className={`rounded-lg border px-4 py-1.5 text-sm font-medium transition-colors ${
+									durationMinutes === n && !customDuration
+										? 'border-[#1a6fca] bg-[#1a6fca]/10 text-[#1a6fca]'
+										: 'border-gray-200 text-gray-600 hover:bg-gray-50'
+								}`}>
+								{n} min
+							</button>
+						))}
+						<input
+							type='number'
+							min={1}
+							max={120}
+							value={customDuration}
+							onChange={(e) => {
+								const val = e.target.value;
+								setCustomDuration(val);
+								const num = parseInt(val, 10);
+								if (!isNaN(num) && num >= 1 && num <= 120) {
+									setDurationMinutes(num);
+								}
+							}}
+							placeholder='Custom min'
+							className={`w-24 rounded-lg border px-3 py-1.5 text-sm outline-none transition-colors ${
+								customDuration
+									? 'border-[#1a6fca] bg-[#1a6fca]/5 text-[#1a6fca]'
+									: 'border-gray-200 text-gray-600 focus:border-[#1a6fca]'
+							}`}
+						/>
+					</div>
+					<p className='mt-1.5 text-xs text-gray-400'>
+						Your session auto-submits when time runs out — progress
+						saves automatically, so closing the tab won&apos;t lose
+						your answers.
+					</p>
+				</div>
+
 				{error && <p className='mt-3 text-xs text-red-600'>{error}</p>}
 
 				<button
@@ -222,6 +423,7 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 		const q = questions[currentIndex];
 		const isLast = currentIndex === questions.length - 1;
 		const hasAnswer = answers[q.id] !== undefined && answers[q.id] !== '';
+		const timeLow = secondsLeft !== null && secondsLeft <= 60;
 
 		return (
 			<div className='rounded-xl border border-gray-200 bg-white p-6 shadow-sm'>
@@ -230,13 +432,25 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 						Question {currentIndex + 1} of {questions.length} ·{' '}
 						{DIFFICULTY_META[difficulty].label}
 					</p>
-					<div className='h-1.5 w-32 overflow-hidden rounded-full bg-gray-100'>
-						<div
-							className='h-full bg-[#1a6fca] transition-all'
-							style={{
-								width: `${((currentIndex + 1) / questions.length) * 100}%`,
-							}}
-						/>
+					<div className='flex items-center gap-3'>
+						{secondsLeft !== null && (
+							<span
+								className={`rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ${
+									timeLow
+										? 'bg-red-100 text-red-700'
+										: 'bg-gray-100 text-gray-600'
+								}`}>
+								{formatTime(secondsLeft)}
+							</span>
+						)}
+						<div className='h-1.5 w-32 overflow-hidden rounded-full bg-gray-100'>
+							<div
+								className='h-full bg-[#1a6fca] transition-all'
+								style={{
+									width: `${((currentIndex + 1) / questions.length) * 100}%`,
+								}}
+							/>
+						</div>
 					</div>
 				</div>
 
@@ -279,9 +493,7 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 
 				<div className='mt-5 flex justify-between'>
 					<button
-						onClick={() =>
-							setCurrentIndex((i) => Math.max(0, i - 1))
-						}
+						onClick={goBack}
 						disabled={currentIndex === 0}
 						className='rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 disabled:opacity-40'>
 						Back
@@ -295,7 +507,7 @@ export function SessionRunner({ recentTopics }: { recentTopics: string[] }) {
 						</button>
 					) : (
 						<button
-							onClick={() => setCurrentIndex((i) => i + 1)}
+							onClick={goNext}
 							disabled={!hasAnswer}
 							className='rounded-lg bg-[#1a6fca] px-5 py-2 text-sm font-medium text-white hover:bg-[#1558a3] disabled:opacity-50'>
 							Next

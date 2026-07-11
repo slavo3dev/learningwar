@@ -1,14 +1,19 @@
-import { getRecentTopics, getSessionHistory } from './session-actions';
+import {
+	getRecentTopics,
+	getSessionHistory,
+	getInProgressSession,
+} from './session-actions';
 import { SessionRunner, SessionHistory } from '@/components';
 
 export default async function SessionsPage() {
-	const [recentTopics, sessions] = await Promise.all([
+	const [recentTopics, sessions, inProgressSession] = await Promise.all([
 		getRecentTopics(),
 		getSessionHistory(),
+		getInProgressSession(),
 	]);
 
 	return (
-		<div className='max-w-[1400px] p-8'>
+		<div className='max-w-350 p-8'>
 			<div className='mb-4'>
 				<h1 className='mb-1 text-2xl font-bold text-gray-900'>
 					Knowledge Check
@@ -19,7 +24,10 @@ export default async function SessionsPage() {
 			</div>
 
 			<div className='grid grid-cols-1 gap-4 lg:grid-cols-[1fr_420px]'>
-				<SessionRunner recentTopics={recentTopics} />
+				<SessionRunner
+					recentTopics={recentTopics}
+					inProgressSession={inProgressSession}
+				/>
 				<div className='lg:sticky lg:top-8 lg:self-start'>
 					<SessionHistory sessions={sessions} />
 				</div>

@@ -24,11 +24,16 @@ type SessionRow = {
 };
 
 export function SessionHistory({
-	sessions: initialSessions,
+	sessions: allSessions,
 }: {
 	sessions: SessionRow[];
 }) {
-	const [sessions, setSessions] = useState(initialSessions);
+	// Same pattern as PrepHistory: filter deleted IDs out of the prop
+	// during render, rather than mirroring the prop into state via
+	// useEffect. The prop stays the single source of truth.
+	const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+	const sessions = allSessions.filter((s) => !deletedIds.has(s.id));
+
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 	const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -42,7 +47,7 @@ export function SessionHistory({
 				setDeleteError(result.error);
 				return;
 			}
-			setSessions((prev) => prev.filter((s) => s.id !== id));
+			setDeletedIds((prev) => new Set(prev).add(id));
 			setConfirmDeleteId(null);
 			if (expandedId === id) setExpandedId(null);
 		});
