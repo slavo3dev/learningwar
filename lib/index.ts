@@ -8,3 +8,4 @@ export * from './porchSelect';
 export * from './porchStreak';
 export * from './quizConstants';
 export * from './prepConstants';
+export * from './roleBadge';

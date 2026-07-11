@@ -5,16 +5,16 @@ export interface PorchLevel {
 }
 
 export const PORCH_LEVELS: PorchLevel[] = [
-	{ level: 0, name: 'Student', minStreak: 0 },
-	{ level: 1, name: 'Initiate', minStreak: 21 },
-	{ level: 2, name: 'Apprentice', minStreak: 41 },
-	{ level: 3, name: 'Warrior', minStreak: 61 },
-	{ level: 4, name: 'Hunter', minStreak: 81 },
-	{ level: 5, name: 'Wolf', minStreak: 101 },
-	{ level: 6, name: 'Lion', minStreak: 121 },
-	{ level: 7, name: 'Spartan', minStreak: 141 },
-	{ level: 8, name: 'Samurai', minStreak: 161 },
-	{ level: 9, name: 'Legend', minStreak: 180 },
+	{ level: 0, name: 'Paides', minStreak: 0 },
+	{ level: 1, name: 'Paidiskoi', minStreak: 21 },
+	{ level: 2, name: 'Hebon', minStreak: 41 },
+	{ level: 3, name: 'Eiren', minStreak: 61 },
+	{ level: 4, name: 'Hoplite', minStreak: 81 },
+	{ level: 5, name: 'Hippeis', minStreak: 101 },
+	{ level: 6, name: 'Lochagos', minStreak: 121 },
+	{ level: 7, name: 'Polemarch', minStreak: 141 },
+	{ level: 8, name: 'Ephor', minStreak: 161 },
+	{ level: 9, name: 'Spartan Legend', minStreak: 180 },
 ];
 
 export function getPorchLevel(streak: number): PorchLevel {
