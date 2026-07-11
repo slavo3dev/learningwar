@@ -406,6 +406,10 @@ export interface Database {
 				Args: { student_id: string };
 				Returns: void;
 			};
+			admin_set_role: {
+				Args: { target_user_id: string; new_role: UserRole };
+				Returns: void;
+			};
 		};
 		Enums: {
 			user_role: UserRole;
