@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib';
 import type { Database, PorchFeedPost, ReactionType } from '@/types/database';
 
 type PorchPostInsert = Database['public']['Tables']['porch_posts']['Insert'];
+type PorchPostUpdate = Database['public']['Tables']['porch_posts']['Update'];
 type PorchCommentInsert =
 	Database['public']['Tables']['porch_comments']['Insert'];
 type PorchLikeInsert = Database['public']['Tables']['porch_likes']['Insert'];
@@ -48,6 +49,70 @@ export async function createPost(formData: FormData) {
 	const { error } = await supabase
 		.from('porch_posts')
 		.upsert(payload, { onConflict: 'user_id,post_date' });
+
+	if (error) return { error: error.message };
+
+	revalidatePath('/dashboard');
+	return { success: true };
+}
+
+export async function updatePost(postId: string, formData: FormData) {
+	const what_learned = (formData.get('what_learned') as string)?.trim();
+	if (!what_learned) return { error: 'What you learned cannot be empty' };
+
+	const challenges = (formData.get('challenges') as string)?.trim() || null;
+	const tomorrow = (formData.get('tomorrow') as string)?.trim() || null;
+
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const { data: existing } = await supabase
+		.from('porch_posts')
+		.select('user_id')
+		.eq('id', postId)
+		.single();
+
+	if (existing?.user_id !== user.id) {
+		return { error: 'You can only edit your own posts' };
+	}
+
+	const payload: PorchPostUpdate = { what_learned, challenges, tomorrow };
+
+	const { error } = await supabase
+		.from('porch_posts')
+		.update(payload)
+		.eq('id', postId);
+
+	if (error) return { error: error.message };
+
+	revalidatePath('/dashboard');
+	return { success: true };
+}
+
+export async function deletePost(postId: string) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const { data: existing } = await supabase
+		.from('porch_posts')
+		.select('user_id')
+		.eq('id', postId)
+		.single();
+
+	if (existing?.user_id !== user.id) {
+		return { error: 'You can only delete your own posts' };
+	}
+
+	const { error } = await supabase
+		.from('porch_posts')
+		.delete()
+		.eq('id', postId);
 
 	if (error) return { error: error.message };
 
@@ -129,6 +194,18 @@ export async function toggleLike(postId: string, reaction: ReactionType) {
 
 	revalidatePath('/dashboard');
 	return { success: true };
+}
+
+export async function getPost(postId: string): Promise<PorchFeedPost | null> {
+	const supabase = await createServerSupabaseClient();
+	const { data, error } = await supabase
+		.from('porch_posts')
+		.select(PORCH_FEED_SELECT)
+		.eq('id', postId)
+		.single();
+
+	if (error || !data) return null;
+	return data as unknown as PorchFeedPost;
 }
 
 export async function getMorePosts(offset: number) {
