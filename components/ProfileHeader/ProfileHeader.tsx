@@ -1,6 +1,5 @@
 import { createServerSupabaseClient, calculatePorchStreak } from '@/lib';
 import { getPorchLevel } from '@/lib/porchLevels';
-import { RankLadder } from '@/components/RankLadder/RankLadder';
 
 export async function ProfileHeader({ userId }: { userId: string }) {
 	const supabase = await createServerSupabaseClient();
@@ -39,54 +38,48 @@ export async function ProfileHeader({ userId }: { userId: string }) {
 	);
 
 	return (
-		<div className='flex flex-col gap-4'>
-			<div className='rounded-xl border border-gray-200 bg-white p-6 shadow-sm'>
-				<div className='flex items-start gap-4'>
-					<div className='flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#1a6fca] text-xl font-semibold text-white'>
-						{initials}
-					</div>
+		<div className='rounded-xl border border-gray-200 bg-white p-6 shadow-sm'>
+			<div className='flex items-start gap-4'>
+				<div className='flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-[#1a6fca] text-xl font-semibold text-white'>
+					{initials}
+				</div>
 
-					<div className='min-w-0 flex-1'>
-						<div className='flex flex-wrap items-center gap-2'>
-							<h2 className='text-lg font-semibold text-gray-900'>
-								{displayName}
-							</h2>
-							<span className='rounded-full bg-[#1a6fca]/10 px-2 py-0.5 text-xs font-semibold text-[#1a6fca]'>
-								{level.name}
-								{level.level > 0 && ` · Lv.${level.level}`}
-							</span>
-						</div>
-						<p className='text-sm text-gray-500'>
-							@{profile.username}
-						</p>
-						{profile.bio && (
-							<p className='mt-2 text-sm text-gray-700'>
-								{profile.bio}
-							</p>
-						)}
-						<p className='mt-2 text-xs text-gray-400'>
-							Member since {memberSince}
-						</p>
+				<div className='min-w-0 flex-1'>
+					<div className='flex flex-wrap items-center gap-2'>
+						<h2 className='text-lg font-semibold text-gray-900'>
+							{displayName}
+						</h2>
+						<span className='rounded-full bg-[#1a6fca]/10 px-2 py-0.5 text-xs font-semibold text-[#1a6fca]'>
+							{level.name}
+							{level.level > 0 && ` · Lv.${level.level}`}
+						</span>
 					</div>
+					<p className='text-sm text-gray-500'>@{profile.username}</p>
+					{profile.bio && (
+						<p className='mt-2 text-sm text-gray-700'>
+							{profile.bio}
+						</p>
+					)}
+					<p className='mt-2 text-xs text-gray-400'>
+						Member since {memberSince}
+					</p>
+				</div>
 
-					<div className='flex gap-4 text-right'>
-						<div>
-							<p className='text-lg font-bold text-[#1a6fca]'>
-								{current}
-							</p>
-							<p className='text-xs text-gray-500'>day streak</p>
-						</div>
-						<div>
-							<p className='text-lg font-bold text-gray-900'>
-								{longest}
-							</p>
-							<p className='text-xs text-gray-500'>longest</p>
-						</div>
+				<div className='flex gap-4 text-right'>
+					<div>
+						<p className='text-lg font-bold text-[#1a6fca]'>
+							{current}
+						</p>
+						<p className='text-xs text-gray-500'>day streak</p>
+					</div>
+					<div>
+						<p className='text-lg font-bold text-gray-900'>
+							{longest}
+						</p>
+						<p className='text-xs text-gray-500'>longest</p>
 					</div>
 				</div>
 			</div>
-
-			<RankLadder currentStreak={current} />
 		</div>
 	);
 }

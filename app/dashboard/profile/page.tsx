@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation';
-import { createServerSupabaseClient } from '@/lib';
+import { createServerSupabaseClient, calculatePorchStreak } from '@/lib';
 import {
 	ProfileHeader,
 	ProfileForm,
 	LearningCalendar,
 	MentorCard,
+	RankLadder,
 } from '@/components';
 import { getMyMentor } from '@/app/dashboard/inbox-actions';
 
@@ -25,6 +26,14 @@ export default async function ProfilePage() {
 	if (!profile) {
 		return <p className='p-8 text-sm text-gray-500'>Profile not found.</p>;
 	}
+
+	const { data: posts } = await supabase
+		.from('porch_posts')
+		.select('post_date')
+		.eq('user_id', user.id);
+
+	const days = new Set((posts ?? []).map((p) => p.post_date));
+	const { current } = calculatePorchStreak(days);
 
 	const isStudent = profile.role === 'student';
 	const mentor = isStudent ? await getMyMentor() : null;
@@ -49,6 +58,7 @@ export default async function ProfilePage() {
 				<div className='space-y-4 lg:col-span-1'>
 					{isStudent && <MentorCard mentor={mentor} />}
 					<LearningCalendar userId={user.id} />
+					<RankLadder currentStreak={current} />
 				</div>
 			</div>
 		</div>
