@@ -16,3 +16,5 @@ export * from './DailyUpdateButton';
 export * from './ScrollToTop';
 export * from './ProfileHeader';
 export * from './HeatmapGrid';
+export * from './SessionRunner';
+export * from './SessionHistory';

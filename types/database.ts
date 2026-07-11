@@ -69,6 +69,8 @@ export interface Database {
 					user_id: string;
 					topic: string;
 					score: number | null;
+					difficulty: string | null;
+					details: unknown | null;
 					completed_at: string | null;
 					created_at: string;
 				};
@@ -77,10 +79,15 @@ export interface Database {
 					user_id: string;
 					topic: string;
 					score?: number | null;
+					difficulty?: string | null;
+					details?: unknown | null;
+					completed_at?: string | null;
 				};
 				Update: {
 					topic?: string;
 					score?: number | null;
+					difficulty?: string | null;
+					details?: unknown | null;
 					completed_at?: string | null;
 				};
 				Relationships: [

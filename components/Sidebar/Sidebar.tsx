@@ -6,6 +6,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 const navItems = [
 	{ label: 'Daily Porch', href: '/dashboard' },
+	{ label: 'Knowledge Check', href: '/dashboard/sessions' },
 	{ label: 'Learning Calendar', href: '/dashboard/calendar' },
 	{ label: 'Mentor Inbox', href: '/dashboard/inbox' },
 	{ label: 'Profile', href: '/dashboard/profile' },

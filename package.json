@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",
+    "@anthropic-ai/sdk": "^0.111.0",
     "@hookform/resolvers": "^5.4.0",
     "@stripe/stripe-js": "^9.6.0",
     "@supabase/ssr": "^0.10.3",
@@ -28,6 +29,7 @@
     "react-hook-form": "^7.76.1",
     "recharts": "^3.8.1",
     "resend": "^6.12.4",
+    "server-only": "^0.0.1",
     "shadcn": "^4.11.0",
     "stripe": "^22.1.1",
     "tailwind-merge": "^3.6.0",
