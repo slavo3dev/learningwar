@@ -18,3 +18,5 @@ export * from './ProfileHeader';
 export * from './HeatmapGrid';
 export * from './SessionRunner';
 export * from './SessionHistory';
+export * from './PrepRunner';
+export * from './PrepHistory';

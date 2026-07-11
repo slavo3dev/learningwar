@@ -254,6 +254,46 @@ export interface Database {
 					},
 				];
 			};
+			prep_sessions: {
+				Row: {
+					id: string;
+					user_id: string;
+					track: string;
+					mode: string;
+					topic: string;
+					role: string | null;
+					difficulty: string | null;
+					overall_score: number | null;
+					details: unknown | null;
+					created_at: string;
+					completed_at: string | null;
+				};
+				Insert: {
+					id?: string;
+					user_id: string;
+					track: string;
+					mode: string;
+					topic: string;
+					role?: string | null;
+					difficulty?: string | null;
+					overall_score?: number | null;
+					details?: unknown | null;
+					completed_at?: string | null;
+				};
+				Update: {
+					overall_score?: number | null;
+					details?: unknown | null;
+					completed_at?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'prep_sessions_user_id_fkey';
+						columns: ['user_id'];
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+				];
+			};
 		};
 		Views: {
 			daily_points: {
@@ -297,6 +337,7 @@ export type LearningActivity =
 	Database['public']['Tables']['learning_activity']['Row'];
 export type Streak = Database['public']['Tables']['streaks']['Row'];
 export type DailyPoints = Database['public']['Views']['daily_points']['Row'];
+export type PrepSession = Database['public']['Tables']['prep_sessions']['Row'];
 
 // Feed display type — a journal PorchPost enriched with author/comments/likes
 export type PorchFeedPost = PorchPost & {
