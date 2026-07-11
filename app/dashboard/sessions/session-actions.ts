@@ -144,3 +144,23 @@ export async function getSessionHistory() {
 
 	return data ?? [];
 }
+
+export async function deleteSession(sessionId: string) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	// Scoped to the owning user explicitly, on top of whatever RLS
+	// policy already exists on sessions — belt and suspenders.
+	const { error } = await supabase
+		.from('sessions')
+		.delete()
+		.eq('id', sessionId)
+		.eq('user_id', user.id);
+
+	if (error) return { error: error.message };
+
+	return { deleted: true };
+}

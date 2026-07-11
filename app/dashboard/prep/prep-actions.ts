@@ -177,3 +177,24 @@ export async function getPrepHistory() {
 
 	return data ?? [];
 }
+
+export async function deletePrepSession(sessionId: string) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	// Scoped to the owning user explicitly, on top of whatever RLS
+	// policy already exists on prep_sessions — belt and suspenders.
+	const { error } = await supabase
+		.from('prep_sessions')
+		.delete()
+		.eq('id', sessionId)
+		.eq('user_id', user.id);
+
+	if (error) return { error: error.message };
+
+	revalidatePath('/dashboard/prep');
+	return { deleted: true };
+}
