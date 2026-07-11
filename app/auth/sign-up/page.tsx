@@ -10,7 +10,7 @@ export default function SignUpPage() {
 		<div className='relative min-h-screen flex items-center justify-center px-4 py-12'>
 			<AuthBackground variant='sign-up' />
 
-			<div className='dark w-full max-w-sm rounded-2xl border border-white/20 bg-black/55 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 [&_label]:!text-white'>
+			<div className='dark w-full max-w-sm rounded-2xl border border-white/20 bg-black/55 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 [&_label]:text-white! [&_input]:text-white! [&_input]:caret-white [&_input::placeholder]:text-white/50!'>
 				<AuthHeader title='Create your account' subtitle={tagline} />
 				<SignUpForm />
 
