@@ -28,8 +28,6 @@ export interface Database {
 					show_email: boolean;
 					created_at: string;
 					updated_at: string;
-					is_mentor: boolean;
-					is_admin: boolean;
 				};
 				Insert: {
 					id: string;
@@ -45,8 +43,6 @@ export interface Database {
 					timezone?: string;
 					email?: string | null;
 					show_email?: boolean;
-					is_mentor: boolean;
-					is_admin: boolean;
 				};
 				Update: {
 					username?: string;
@@ -57,8 +53,6 @@ export interface Database {
 					timezone?: string;
 					show_email?: boolean;
 					updated_at?: string;
-					is_mentor: boolean;
-					is_admin: boolean;
 				};
 				Relationships: [
 					{
@@ -435,6 +429,10 @@ export type LearningActivity =
 export type Streak = Database['public']['Tables']['streaks']['Row'];
 export type DailyPoints = Database['public']['Views']['daily_points']['Row'];
 export type PrepSession = Database['public']['Tables']['prep_sessions']['Row'];
+export type MentorAssignment =
+	Database['public']['Tables']['mentor_assignments']['Row'];
+export type MentorMessage =
+	Database['public']['Tables']['mentor_messages']['Row'];
 
 // Feed display type — a journal PorchPost enriched with author/comments/likes
 export type PorchFeedPost = PorchPost & {
