@@ -1,44 +1,28 @@
-import Link from "next/link";
-import { AuthCard, AuthHeader, SignInForm } from "@/components";
+import Link from 'next/link';
+import { AuthHeader, SignUpForm } from '@/components';
+import { AuthBackground } from '@/components/AuthBackground/AuthBackground';
+import { SIGN_UP_TAGLINES, pickTagline } from '@/lib/authTaglines';
 
-export default async function SignInPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ redirectedFrom?: string; error?: string }>;
-}) {
-  const { redirectedFrom, error } = await searchParams;
+export default function SignUpPage() {
+	const tagline = pickTagline(SIGN_UP_TAGLINES);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <AuthHeader
-          title="Welcome back"
-          subtitle="Sign in to continue learning"
-        />
+	return (
+		<div className='relative min-h-screen flex items-center justify-center px-4 py-12'>
+			<AuthBackground variant='sign-up' />
 
-        {error === "link_expired" && (
-          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            That confirmation link expired. Please sign up again to get a new one.
-          </div>
-        )}
+			<div className='dark w-full max-w-sm rounded-2xl border border-white/20 bg-black/55 p-6 shadow-2xl backdrop-blur-2xl sm:p-8 [&_label]:!text-white'>
+				<AuthHeader title='Create your account' subtitle={tagline} />
+				<SignUpForm />
 
-        {error === "auth_callback_failed" && (
-          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            Something went wrong. Please try again.
-          </div>
-        )}
-
-        <AuthCard>
-          <SignInForm redirectedFrom={redirectedFrom} />
-        </AuthCard>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          No account yet?{" "}
-          <Link href="/auth/sign-up" className="text-primary hover:underline font-medium">
-            Create one free
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
+				<p className='mt-6 text-center text-sm text-muted-foreground'>
+					Already have an account?{' '}
+					<Link
+						href='/auth/sign-in'
+						className='text-primary hover:underline font-medium'>
+						Sign in
+					</Link>
+				</p>
+			</div>
+		</div>
+	);
 }

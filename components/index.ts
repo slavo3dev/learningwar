@@ -26,3 +26,5 @@ export * from './UserRoleManager';
 export * from './MentorCard';
 export * from './RankLadder';
 export * from './RegisterServiceWorker';
+export * from './AuthHero';
+export * from './AuthBackground';
