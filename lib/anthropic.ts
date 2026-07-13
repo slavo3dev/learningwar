@@ -27,7 +27,10 @@ export async function generateQuizQuestions(
 
 	const message = await anthropic.messages.create({
 		model: 'claude-sonnet-5',
-		max_tokens: 2000,
+		// 2000 was too low: legend-difficulty questions are highly detailed and the
+		// response JSON was being truncated, causing JSON.parse to throw for 6+ questions.
+		// 4096 gives ample headroom for any difficulty × question-count combination.
+		max_tokens: 4096,
 		system: 'You write concise knowledge-check quiz questions for a learner studying a technical topic. Respond ONLY with valid JSON, no markdown fences, no preamble.',
 		messages: [
 			{
