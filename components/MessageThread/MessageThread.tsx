@@ -86,7 +86,7 @@ export function MessageThread({
 								)}
 								<p>{m.body}</p>
 							</div>
-							<span className='mt-1 text-xs text-gray-400'>
+							<span suppressHydrationWarning className='mt-1 text-xs text-gray-400'>
 								{new Date(m.created_at).toLocaleString()}
 							</span>
 						</div>

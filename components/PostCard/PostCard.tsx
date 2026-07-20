@@ -268,7 +268,10 @@ export function PostCard({
 							</button>
 						</>
 					)}
-					<span className='text-xs text-gray-400'>
+					{/* suppressHydrationWarning: toLocaleString() is timezone-dependent.
+					    Server (UTC) and client (local tz) produce different text — this is
+					    intentional. React replaces the UTC value with local time on hydration. */}
+				<span suppressHydrationWarning className='text-xs text-gray-400'>
 						{new Date(post.created_at).toLocaleString()}
 					</span>
 				</div>

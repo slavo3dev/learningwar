@@ -99,7 +99,7 @@ export function SessionHistory({
 										<p className='text-sm font-medium text-gray-900'>
 											{s.topic}
 										</p>
-										<p className='text-xs text-gray-400'>
+										<p suppressHydrationWarning className='text-xs text-gray-400'>
 											{new Date(
 												s.created_at,
 											).toLocaleDateString()}
