@@ -154,6 +154,66 @@ export async function createComment(postId: string, formData: FormData) {
 	return { success: true };
 }
 
+export async function updateComment(commentId: string, content: string) {
+	const trimmed = content.trim();
+	if (!trimmed) return { error: 'Comment cannot be empty' };
+	if (trimmed.length > 300) return { error: 'Comment too long (max 300 characters)' };
+
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const { data: existing } = await supabase
+		.from('porch_comments')
+		.select('author_id')
+		.eq('id', commentId)
+		.single();
+
+	if (!existing) return { error: 'Comment not found' };
+	if (existing.author_id !== user.id)
+		return { error: 'You can only edit your own comments' };
+
+	const { error } = await supabase
+		.from('porch_comments')
+		.update({ content: trimmed })
+		.eq('id', commentId);
+
+	if (error) return { error: error.message };
+
+	revalidatePath('/dashboard');
+	return { success: true };
+}
+
+export async function deleteComment(commentId: string) {
+	const supabase = await createServerSupabaseClient();
+	const {
+		data: { user },
+	} = await supabase.auth.getUser();
+	if (!user) return { error: 'Not authenticated' };
+
+	const { data: existing } = await supabase
+		.from('porch_comments')
+		.select('author_id')
+		.eq('id', commentId)
+		.single();
+
+	if (!existing) return { error: 'Comment not found' };
+	if (existing.author_id !== user.id)
+		return { error: 'You can only delete your own comments' };
+
+	const { error } = await supabase
+		.from('porch_comments')
+		.delete()
+		.eq('id', commentId);
+
+	if (error) return { error: error.message };
+
+	revalidatePath('/dashboard');
+	return { success: true };
+}
+
 export async function toggleLike(postId: string, reaction: ReactionType) {
 	const supabase = await createServerSupabaseClient();
 	const {

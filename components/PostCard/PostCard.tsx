@@ -3,9 +3,11 @@
 import { useState, useTransition } from 'react';
 import {
 	createComment,
+	deleteComment,
 	deletePost,
 	getPost,
 	toggleLike,
+	updateComment,
 	updatePost,
 } from '@/app/dashboard/porch-actions';
 import {
@@ -38,6 +40,8 @@ export function PostCard({
 	const [isPending, startTransition] = useTransition();
 	const [showComments, setShowComments] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
+	const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+	const [editingCommentContent, setEditingCommentContent] = useState('');
 	const [error, setError] = useState<string | null>(null);
 
 	const isOwnPost = post.user_id === currentUserId;
@@ -96,6 +100,43 @@ export function PostCard({
 				return;
 			}
 			setIsEditing(false);
+			await refreshPost();
+		});
+	}
+
+	function handleEditComment(commentId: string, currentContent: string) {
+		setEditingCommentId(commentId);
+		setEditingCommentContent(currentContent);
+		setError(null);
+	}
+
+	function handleCancelEditComment() {
+		setEditingCommentId(null);
+		setEditingCommentContent('');
+		setError(null);
+	}
+
+	function handleSaveCommentEdit(commentId: string) {
+		startTransition(async () => {
+			const result = await updateComment(commentId, editingCommentContent);
+			if (result?.error) {
+				setError(result.error);
+				return;
+			}
+			setEditingCommentId(null);
+			setEditingCommentContent('');
+			await refreshPost();
+		});
+	}
+
+	function handleDeleteComment(commentId: string) {
+		if (!window.confirm('Delete this comment? This cannot be undone.')) return;
+		startTransition(async () => {
+			const result = await deleteComment(commentId);
+			if (result?.error) {
+				setError(result.error);
+				return;
+			}
 			await refreshPost();
 		});
 	}
@@ -323,19 +364,84 @@ export function PostCard({
 
 			{showComments && (
 				<div className='mt-3 space-y-2 border-t border-gray-100 pt-3'>
-					{post.comments?.map((c) => (
-						<div
-							key={c.id}
-							className='rounded-md bg-gray-50 px-3 py-2 text-sm'>
-							<span className='font-medium text-gray-900'>
-								{c.author?.full_name ||
-									c.author?.username ||
-									'Learner'}
-								:{' '}
-							</span>
-							<span className='text-gray-700'>{c.content}</span>
-						</div>
-					))}
+					{post.comments?.map((c) => {
+						const isOwnComment = c.author_id === currentUserId;
+						const isBeingEdited = editingCommentId === c.id;
+						const authorName =
+							c.author?.full_name || c.author?.username || 'Learner';
+
+						if (isBeingEdited) {
+							return (
+								<div key={c.id} className='rounded-md border border-[#1a6fca]/30 bg-white px-3 py-2'>
+									<p className='mb-1.5 text-xs font-medium text-gray-500'>
+										Editing comment
+									</p>
+									<textarea
+										value={editingCommentContent}
+										onChange={(e) =>
+											setEditingCommentContent(e.target.value)
+										}
+										rows={2}
+										maxLength={300}
+										className='w-full resize-none rounded-md border border-gray-200 p-2 text-sm outline-none focus:border-[#1a6fca]'
+									/>
+									<div className='mt-1.5 flex items-center justify-between'>
+										<span className='text-[10px] text-gray-400'>
+											{editingCommentContent.length}/300
+										</span>
+										<div className='flex gap-2'>
+											<button
+												onClick={handleCancelEditComment}
+												className='rounded px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100'>
+												Cancel
+											</button>
+											<button
+												onClick={() => handleSaveCommentEdit(c.id)}
+												disabled={
+													isPending ||
+													!editingCommentContent.trim()
+												}
+												className='rounded bg-[#1a6fca] px-2.5 py-1 text-xs font-medium text-white hover:bg-[#1558a3] disabled:opacity-50'>
+												{isPending ? 'Saving…' : 'Save'}
+											</button>
+										</div>
+									</div>
+								</div>
+							);
+						}
+
+						return (
+							<div
+								key={c.id}
+								className='rounded-md bg-gray-50 px-3 py-2 text-sm'>
+								<div className='flex items-start justify-between gap-2'>
+									<p className='text-gray-700'>
+										<span className='font-medium text-gray-900'>
+											{authorName}:{' '}
+										</span>
+										{c.content}
+									</p>
+									{isOwnComment && (
+										<div className='flex shrink-0 gap-2 pt-0.5'>
+											<button
+												onClick={() =>
+													handleEditComment(c.id, c.content)
+												}
+												className='text-[11px] font-medium text-gray-400 hover:text-[#1a6fca]'>
+												Edit
+											</button>
+											<button
+												onClick={() => handleDeleteComment(c.id)}
+												disabled={isPending}
+												className='text-[11px] font-medium text-gray-400 hover:text-red-600 disabled:opacity-40'>
+												Delete
+											</button>
+										</div>
+									)}
+								</div>
+							</div>
+						);
+					})}
 
 					{isOwnPost ? (
 						<p className='text-xs text-gray-400'>
