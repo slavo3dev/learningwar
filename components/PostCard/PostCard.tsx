@@ -70,12 +70,48 @@ export function PostCard({
 
 	function handleReact(reaction: ReactionType) {
 		if (isOwnPost) return;
+
+		// Snapshot current post for rollback if the server action fails.
+		const prevPost = post;
+
+		// Mirror the server-side toggle logic to compute the optimistic new likes list.
+		const existingLike = post.likes?.find((l) => l.user_id === currentUserId);
+		let newLikes: NonNullable<typeof post.likes>;
+
+		if (existingLike?.reaction_type === reaction) {
+			// Same reaction → toggle off (remove)
+			newLikes = (post.likes ?? []).filter((l) => l.user_id !== currentUserId);
+		} else if (existingLike) {
+			// Different reaction → switch
+			newLikes = (post.likes ?? []).map((l) =>
+				l.user_id === currentUserId ? { ...l, reaction_type: reaction } : l,
+			);
+		} else {
+			// No prior reaction → add (temp ID replaced by refreshPost on success)
+			newLikes = [
+				...(post.likes ?? []),
+				{
+					id: crypto.randomUUID(),
+					post_id: post.id,
+					user_id: currentUserId,
+					reaction_type: reaction,
+					created_at: new Date().toISOString(),
+				},
+			];
+		}
+
+		// Apply immediately — user sees the change with zero perceived delay.
+		setPost((prev) => ({ ...prev, likes: newLikes }));
+
 		startTransition(async () => {
 			const result = await toggleLike(post.id, reaction);
 			if (result?.error) {
+				// Revert the optimistic update so the UI stays truthful.
+				setPost(prevPost);
 				setError(result.error);
 				return;
 			}
+			// Sync authoritative data (replaces the temp ID with the real DB id).
 			await refreshPost();
 		});
 	}
