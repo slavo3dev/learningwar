@@ -223,6 +223,20 @@ export function PrepRunner({
 		setSecondsLeft(null);
 	}
 
+	function handleExit() {
+		if (
+			!window.confirm(
+				'Exit this session? Your answers so far will be saved — you can resume where you left off when you come back.',
+			)
+		)
+			return;
+		// Persist the latest answers before leaving so the resume prompt
+		// has accurate data. The session stays as status='in_progress' in
+		// the DB; the resume flow on next visit handles it from there.
+		saveNow();
+		reset();
+	}
+
 	if (resumeChoicePending && inProgressSession) {
 		return (
 			<div className='rounded-xl border border-[#1a6fca]/30 bg-[#1a6fca]/5 p-6 shadow-sm'>
@@ -548,10 +562,18 @@ export function PrepRunner({
 		return (
 			<div className='rounded-xl border border-gray-200 bg-white p-6 shadow-sm'>
 				<div className='mb-4 flex items-center justify-between'>
-					<p className='text-xs font-medium uppercase tracking-wide text-gray-400'>
-						{TRACK_META[track].label} · Question {currentIndex + 1}{' '}
-						of {questions.length}
-					</p>
+					<div className='flex items-center gap-3'>
+						<button
+							onClick={handleExit}
+							className='text-xs font-medium text-gray-400 hover:text-gray-600'>
+							← Exit
+						</button>
+						<span className='text-gray-200'>|</span>
+						<p className='text-xs font-medium uppercase tracking-wide text-gray-400'>
+							{TRACK_META[track].label} · Question {currentIndex + 1}{' '}
+							of {questions.length}
+						</p>
+					</div>
 					<div className='flex items-center gap-3'>
 						{secondsLeft !== null && (
 							<span
