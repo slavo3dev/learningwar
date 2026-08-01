@@ -221,6 +221,11 @@ export function PrepRunner({
 		setError(null);
 		setSessionId(null);
 		setSecondsLeft(null);
+		// Re-fetch RSC data so Past Sessions reflects the newly completed
+		// session immediately (without requiring the user to navigate away
+		// and back). Also ensures getInProgressPrepSession() is re-run so
+		// a stale in-progress row is not carried over into the next setup.
+		router.refresh();
 	}
 
 	function handleExit() {
@@ -694,7 +699,13 @@ export function PrepRunner({
 			</div>
 
 			<button
-				onClick={reset}
+				onClick={() => {
+					// Refresh RSC so Past Sessions sidebar shows the session we
+					// just completed — the first router.refresh() in handleSubmitAll
+					// may still be in flight when the user clicks this button.
+					router.refresh();
+					reset();
+				}}
 				className='mt-5 rounded-lg bg-[#1a6fca] px-5 py-2 text-sm font-medium text-white hover:bg-[#1558a3]'>
 				Start another session
 			</button>

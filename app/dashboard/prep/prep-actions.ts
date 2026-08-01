@@ -215,7 +215,11 @@ export async function finalizePrepQA({
 				results.length,
 		) * 10; // scale 0-10 avg to a 0-100 score
 
-	const { error } = await supabase
+	// Use .select('id') so PostgREST returns the updated rows.
+	// Without it, a missing RLS UPDATE policy produces 0 rows + no error,
+	// making the function appear to succeed while the row stays 'in_progress'
+	// in the DB — causing the "Past Sessions empty / Resume card reappears" bugs.
+	const { data: updatedRows, error } = await supabase
 		.from('prep_sessions')
 		.update({
 			track,
@@ -230,9 +234,15 @@ export async function finalizePrepQA({
 			completed_at: new Date().toISOString(),
 		})
 		.eq('id', sessionId)
-		.eq('user_id', user.id);
+		.eq('user_id', user.id)
+		.select('id');
 
 	if (error) return { error: error.message };
+	if (!updatedRows || updatedRows.length === 0) {
+		// The update was silently blocked — most likely a missing RLS UPDATE
+		// policy on prep_sessions. Run supabase/20260910000000_prep_sessions_rls.sql.
+		return { error: 'Could not save your results. Please try again.' };
+	}
 
 	revalidatePath('/dashboard/prep');
 	return { results, overallScore };
